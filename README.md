@@ -108,6 +108,22 @@ A log line `power mode changed to X (source=applet)` confirms the change came
 from the widget; `source=unknown` means it came from the front button or a
 direct CLI write.
 
+## Benchmarks
+
+The modes set a **power/thermal envelope**, not a hard frequency cap — they
+change how hard the APU is allowed to boost under load. `pmode-bench.sh`
+measures that directly (CPU envelope + LLM throughput, all three modes).
+Measured results and interpretation live in **[BENCHMARKS.md](BENCHMARKS.md)**.
+
+```bash
+./pmode-bench.sh --cpu   # ~30s: freq + package power per mode under a 16-core load
+./pmode-bench.sh --llm   # a few min: llama-bench pp512/tg128 per mode
+```
+
+Headline (2026-08-25, 12B Gemma, Vulkan): prompt processing is **~29% faster**
+in `performance` than `quiet` (817 vs 633 t/s); token generation is nearly
+mode-insensitive (memory-bandwidth-bound).
+
 ## D-Bus API
 
 Bus `com.evox2.powermode`, object `/com/evox2/powermode`, interface
@@ -163,7 +179,9 @@ service/
   pmode-write              root sysfs writer helper
   pmode-sudoers            narrow sudoers entry (group ec_su_axb35)
   99-ec-su_axb35.rules     udev rule
-install.sh                 one-shot installer
-README.md                  this file
-TECHNICAL.md               architecture + the Plasma 6.6 D-Bus limitation + bridge rationale
+ install.sh                 one-shot installer
+ pmode-bench.sh             benchmark the modes (CPU envelope + LLM throughput)
+ README.md                  this file
+ BENCHMARKS.md              benchmark method + measured results
+ TECHNICAL.md               architecture + the Plasma 6.6 D-Bus limitation + bridge rationale
 ```
