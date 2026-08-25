@@ -75,6 +75,16 @@ class SignalForwarder : public QObject
 public:
     explicit SignalForwarder(QObject *parent = nullptr) : QObject(parent), _lastMode(_readMode()) {}
 
+    // Start polling the backend's Mode on a short timer, re-emitting
+    // ModeChanged on change. (QDBusConnection::connect() is unreliable in this
+    // Qt build — it mis-parses the slot name and fails — so we poll instead.)
+    void start(int intervalMs)
+    {
+        _timer.setInterval(intervalMs);
+        connect(&_timer, &QTimer::timeout, this, &SignalForwarder::poll);
+        _timer.start();
+    }
+
 private slots:
     void poll()
     {
@@ -124,9 +134,7 @@ int main(int argc, char **argv)
     session.registerObject(BRIDGE_PATH, &bridge, QDBusConnection::ExportAllSlots);
 
     SignalForwarder forwarder;
-    forwarder._timer.setInterval(150);
-    QObject::connect(&forwarder._timer, &QTimer::timeout, &forwarder, &SignalForwarder::poll);
-    forwarder._timer.start();
+    forwarder.start(150);
 
     return app.exec();
 }

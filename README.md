@@ -7,6 +7,10 @@ reboot.
 
 Tested on a GMKtec NucBox EVO-X2 (Kubuntu 26.04, Plasma 6.6).
 
+Right-click the panel widget to pick a mode directly:
+
+![Strix Halo Power Mode widget menu](docs/widget-menu.png)
+
 ```
 ┌────────────┐  asyncCall   ┌──────────────────┐  sudo pmode-write  ┌──────────────────────────────┐
 │ Plasma     │ ───────────► │ com.evox2.       │ ─────────────────► │ /sys/class/ec_su_axb35/      │
