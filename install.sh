@@ -19,6 +19,36 @@ if [ ! -f driver/src/ec_su_axb35.c ]; then
 	die "driver/ submodule is empty. Run: git submodule update --init"
 fi
 
+# --- 0b. dependency preflight ------------------------------------------------
+# Fail loudly (with the exact install line) rather than dying mid-DKMS-build.
+MISSING_PKGS=()
+have() { command -v "$1" >/dev/null 2>&1; }
+# package -> probe (command or header)
+check_cmd() { have "$2" || MISSING_PKGS+=("$1"); }
+check_hdr() { [ -e "$2" ] || MISSING_PKGS+=("$1"); }
+
+check_cmd dkms dkms
+check_cmd gcc gcc
+check_cmd make make
+check_cmd pkg-config pkg-config
+check_cmd gdbus gdbus
+check_cmd kpackagetool6 kpackagetool6
+check_hdr "linux-headers-$(uname -r)" "/lib/modules/$(uname -r)/build/Makefile"
+# python3-gi (PyGObject)
+python3 -c 'import gi' 2>/dev/null || MISSING_PKGS+=("python3-gi")
+# Qt6 dev (for the bridge)
+pkg-config --exists Qt6DBus Qt6Core 2>/dev/null || MISSING_PKGS+=("qt6-base-dev")
+
+if [ "${#MISSING_PKGS[@]}" -gt 0 ]; then
+	# de-dup, preserve order
+	uniq_pkgs=$(printf '%s\n' "${MISSING_PKGS[@]}" | awk '!seen[$0]++')
+	die "missing dependencies: $(echo $uniq_pkgs)
+Install them with:
+    sudo apt install $(echo $uniq_pkgs)
+(replace 'linux-headers-$(uname -r)' with your running kernel's headers package,
+ e.g. 'linux-headers-generic' or 'linux-headers-$(uname -r)')"
+fi
+
 # --- 1. kernel driver (DKMS) -----------------------------------------------
 if [ "$EUID" -ne 0 ]; then
 	warn "running as non-root; sudo will be used where needed"
@@ -29,7 +59,9 @@ fi
 
 log "building + installing kernel driver via DKMS"
 $SUDO dkms remove -m ec-su_axb35 -v 1.0 --all 2>/dev/null || true
-$SUDO dkms add -m ec-su_axb35 -v 1.0 --source-dir "$SCRIPT_DIR/driver"
+# Run dkms add from inside the driver source dir so it picks up dkms.conf and
+# copies the source into /var/lib/dkms (the repo can be deleted afterwards).
+(cd "$SCRIPT_DIR/driver" && $SUDO dkms add -m ec-su_axb35 -v 1.0)
 $SUDO dkms build -m ec-su_axb35 -v 1.0 -k "$(uname -r)"
 $SUDO dkms install -m ec-su_axb35 -v 1.0 -k "$(uname -r)"
 echo "ec_su_axb35" | $SUDO tee /etc/modules-load.d/su_axb35.conf >/dev/null
@@ -80,6 +112,8 @@ systemctl --user enable --now pmode-bridge
 
 # --- 6. Plasma applet -------------------------------------------------------
 log "installing Plasma applet"
+# Remove a previous install first so re-runs (and upgrades) work cleanly.
+kpackagetool6 --type Plasma/Applet --remove org.kde.pmode 2>/dev/null || true
 kpackagetool6 --type Plasma/Applet --install applet/org.kde.pmode
 
 log "done. Add the 'Strix Halo Power Mode' widget to your panel."

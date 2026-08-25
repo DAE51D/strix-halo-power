@@ -52,14 +52,19 @@ support from the canonical driver.
 > `gdbus`. All present on Kubuntu 26.04.
 
 ```bash
-git clone --recurse-submodules git@github.com:DAE51D/strix-halo-power.git
+git clone --recurse-submodules https://github.com/DAE51D/strix-halo-power.git
 cd strix-halo-power
-sudo ./install.sh
+sudo ./install.sh        # or: sudo make install
 ```
 
-`install.sh` builds the driver (DKMS), installs the privilege helper + udev
-rule, installs and enables both systemd user services, compiles the bridge,
-and installs the Plasma applet. If you cloned without
+`install.sh` first checks dependencies and prints the exact `sudo apt install …`
+line if anything is missing (so a first run fails loudly, not mid-build). It
+then builds the driver (DKMS), installs the privilege helper + udev rule,
+installs and enables both systemd user services, compiles the bridge, and
+installs the Plasma applet. Everything is installed into system/user locations
+(`/etc`, `/usr/local/bin`, `~/.local`, `~/.config`, DKMS) — **not** into the
+repo — so once it works you can `rm -rf` the checkout. `sudo make uninstall`
+(= `uninstall.sh`) reverses it. If you cloned without
 `--recurse-submodules`, run `git submodule update --init` first (the script
 checks and tells you).
 
