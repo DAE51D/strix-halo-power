@@ -1,0 +1,19 @@
+# Allow the 'ec_su_axb35' group to write the APU power-mode sysfs file.
+# The D-Bus service (com.evox2.powermode) runs as the user and writes this file;
+# granting group write avoids setuid/polkit for a single-file homelab box.
+#
+# Caveats (verified on this box, 2026-08-21):
+#  - udev rules set permissions on device *nodes* (/dev/...), NOT on sysfs
+#    attribute files. The ec_su_axb35 module creates its devices with a
+#    character device node but no cdev open handler, so the node is unusable
+#    and udev cannot change the mode of apu/power_mode.
+#  - udev also warns that a non-system group owning a device node is
+#    deprecated, so this rule is kept minimal and only sets the group on the
+#    (currently unused) device node.
+#
+# The real permission grant happens at module load: the module (or a patched
+# version, see #3 kernel PR) must call sysfs file permission setup for
+# apu/power_mode, e.g. via a udev tag or an explicit set of the file's group
+# and mode in the driver's device_create path. Until then, the D-Bus service
+# falls back to writing via a sudo rule (see README.md).
+SUBSYSTEM=="ec_su_axb35", KERNEL=="apu", GROUP="ec_su_axb35"

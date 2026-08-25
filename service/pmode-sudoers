@@ -1,0 +1,5 @@
+# /etc/sudoers.d/pmode
+# Grant the ec_su_axb35 group a single narrow, NOPASSWD command:
+# run the pmode-write helper as root. No shell, no wildcards.
+Cmnd_Alias PMODE_WRITE = /usr/local/bin/pmode-write
+%ec_su_axb35 ALL=(root) NOPASSWD: PMODE_WRITE

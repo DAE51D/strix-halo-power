@@ -1,0 +1,12 @@
+[Unit]
+Description=EVO-X2 APU power-mode D-Bus bridge (C++/Qt, Plasma-visible)
+After=graphical-session-pre.target com.evox2.powermode.service
+Wants=graphical-session-pre.target com.evox2.powermode.service
+
+[Service]
+ExecStart=%h/.local/bin/pmode-bridge
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

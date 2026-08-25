@@ -1,0 +1,12 @@
+[Unit]
+Description=EVO-X2 APU power-mode D-Bus service
+After=graphical-session-pre.target
+Wants=graphical-session-pre.target
+
+[Service]
+ExecStart=/usr/bin/python3 __SCRIPT__
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

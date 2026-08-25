@@ -1,0 +1,11 @@
+#!/bin/bash
+# pmode-write — narrow privileged writer for /sys/class/ec_su_axb35/apu/power_mode
+# Invoked as: pmode-write <quiet|balanced|performance>
+# Granted via sudoers to group ec_su_axb35 (NOPASSWD, root).
+set -euo pipefail
+MODE="${1:-}"
+case "$MODE" in
+    quiet|balanced|performance) ;;
+    *) echo "usage: pmode-write <quiet|balanced|performance>" >&2; exit 2 ;;
+esac
+printf '%s\n' "$MODE" > /sys/class/ec_su_axb35/apu/power_mode
