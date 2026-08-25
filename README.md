@@ -5,11 +5,15 @@ Switch the APU power mode (`quiet` / `balanced` / `performance`) on AMD
 physical button, a Plasma 6 panel widget, or the CLI. Everything survives a
 reboot.
 
-Tested on a GMKtec NucBox EVO-X2 (Kubuntu 26.04, Plasma 6.6).
+Tested on a [GMKtec NucBox EVO-X2](https://www.gmktec.com/products/amd-ryzen%E2%84%A2-ai-max-395-evo-x2-ai-mini-pc) ([Kubuntu 26.04](https://kubuntu.org/news/kubuntu-26-04-release-notes/), Plasma 6.6).
 
 Right-click the panel widget to pick a mode directly:
 
 ![Strix Halo Power Mode widget menu](docs/widget-menu.png)
+
+Press the `P-MODE` button to cycle:
+
+![Strix Halo P-MODE button](docs/pmode_button.png)
 
 ```
 ┌────────────┐  asyncCall   ┌──────────────────┐  sudo pmode-write  ┌──────────────────────────────┐
@@ -28,13 +32,13 @@ Right-click the panel widget to pick a mode directly:
 
 ## What's in the stack
 
-| Layer | What | Survives reboot? |
-|-------|------|------------------|
-| Kernel module | `ec_su_axb35` — exposes `/sys/class/ec_su_axb35/apu/power_mode` + the button as `KEY_POWER` | Yes — DKMS / auto-load |
-| Privilege helper | `pmode-write` + sudoers — writes the root-only sysfs file | Yes — `/etc`, `/usr/local/bin` |
-| D-Bus service | `com.evox2.powermode.backend` — single validated writer, polls sysfs, emits `ModeChanged` | Yes — enabled systemd **user** service |
-| D-Bus bridge | `pmode-bridge` — C++/Qt, owns `com.evox2.powermode`, forwards to the backend | Yes — enabled systemd **user** service |
-| Plasma applet | `org.kde.pmode` — the tray button / widget | Yes — installed to `~/.local` |
+| Layer            | What                                                                                               | Survives reboot?                             |
+| ---------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Kernel module    | `ec_su_axb35` — exposes `/sys/class/ec_su_axb35/apu/power_mode` + the button as `KEY_POWER` | Yes — DKMS / auto-load                      |
+| Privilege helper | `pmode-write` + sudoers — writes the root-only sysfs file                                       | Yes —`/etc`, `/usr/local/bin`           |
+| D-Bus service    | `com.evox2.powermode.backend` — single validated writer, polls sysfs, emits `ModeChanged`     | Yes — enabled systemd**user** service |
+| D-Bus bridge     | `pmode-bridge` — C++/Qt, owns `com.evox2.powermode`, forwards to the backend                  | Yes — enabled systemd**user** service |
+| Plasma applet    | `org.kde.pmode` — the tray button / widget                                                      | Yes — installed to`~/.local`              |
 
 The kernel driver is a **git submodule** (`driver/`) tracking
 [`cmetz/ec-su_axb35-linux`](https://github.com/cmetz/ec-su_axb35-linux)
@@ -110,16 +114,16 @@ Bus `com.evox2.powermode`, object `/com/evox2/powermode`, interface
 `com.evox2.powermode` (owned by the bridge; the backend mirrors it on
 `com.evox2.powermode.backend`).
 
-| Member | Type | Description |
-|--------|------|-------------|
-| `Mode` | property (s) | Current mode |
-| `Modes` | property (as) | `["quiet", "balanced", "performance"]` |
-| `Version` | property (s) | Service version |
-| `GetMode()` | method → s | Current mode |
-| `SetMode(mode)` | method (s) | Validate + write sysfs + read back |
-| `SetQuiet()` / `SetBalanced()` / `SetPerformance()` | method | No-arg setters (Plasma drops args — see TECHNICAL.md) |
-| `Cycle()` | method → s | Next mode in order |
-| `ModeChanged(newMode, source)` | signal (s, s) | Any change (applet / button / CLI) |
+| Member                                                    | Type          | Description                                            |
+| --------------------------------------------------------- | ------------- | ------------------------------------------------------ |
+| `Mode`                                                  | property (s)  | Current mode                                           |
+| `Modes`                                                 | property (as) | `["quiet", "balanced", "performance"]`               |
+| `Version`                                               | property (s)  | Service version                                        |
+| `GetMode()`                                             | method → s   | Current mode                                           |
+| `SetMode(mode)`                                         | method (s)    | Validate + write sysfs + read back                     |
+| `SetQuiet()` / `SetBalanced()` / `SetPerformance()` | method        | No-arg setters (Plasma drops args — see TECHNICAL.md) |
+| `Cycle()`                                               | method → s   | Next mode in order                                     |
+| `ModeChanged(newMode, source)`                          | signal (s, s) | Any change (applet / button / CLI)                     |
 
 **Write path:** tries a direct sysfs write; on `PermissionError` falls back to
 `sudo -n /usr/local/bin/pmode-write <mode>`. After writing it reads back (up to
