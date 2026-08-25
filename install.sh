@@ -59,9 +59,16 @@ fi
 
 log "building + installing kernel driver via DKMS"
 $SUDO dkms remove -m ec-su_axb35 -v 1.0 --all 2>/dev/null || true
-# Run dkms add from inside the driver source dir so it picks up dkms.conf and
-# copies the source into /var/lib/dkms (the repo can be deleted afterwards).
-(cd "$SCRIPT_DIR/driver" && $SUDO dkms add -m ec-su_axb35 -v 1.0)
+# DKMS 3.2.x wants the source pre-staged at /usr/src/<name>-<ver>/ before
+# 'dkms add' (neither --source-dir nor an in-place 'cd && dkms add' works).
+# Stage just the build inputs, then add/build/install. DKMS keeps its own copy
+# under /var/lib/dkms, so the repo can be deleted afterwards.
+STAGE_DIR="/usr/src/ec-su_axb35-1.0"
+$SUDO rm -rf "$STAGE_DIR"
+$SUDO mkdir -p "$STAGE_DIR"
+$SUDO cp -r "$SCRIPT_DIR/driver/Makefile" "$SCRIPT_DIR/driver/Kbuild" \
+	"$SCRIPT_DIR/driver/dkms.conf" "$SCRIPT_DIR/driver/src" "$STAGE_DIR/"
+$SUDO dkms add -m ec-su_axb35 -v 1.0
 $SUDO dkms build -m ec-su_axb35 -v 1.0 -k "$(uname -r)"
 $SUDO dkms install -m ec-su_axb35 -v 1.0 -k "$(uname -r)"
 echo "ec_su_axb35" | $SUDO tee /etc/modules-load.d/su_axb35.conf >/dev/null
