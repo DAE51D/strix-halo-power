@@ -79,9 +79,21 @@ right-click picks one directly. The icon reflects the current mode.
 > **Plasmoids don't hot-reload QML.** If the widget doesn't show up in the
 > "Add Widgets" search right after a fresh install, or an upgrade (`kpackagetool6
 > --upgrade`) doesn't seem to take effect, restart plasmashell — no logout/login
-> needed: `kquitapp6 plasmashell; nohup plasmashell >/tmp/plasmashell.log 2>&1 & disown`.
-> (`kstart6` doesn't exist on Kubuntu 26.04 — only `kstart`/`kstart5`, neither of
-> which is `kstart6` — so the `nohup … & disown` form is the reliable one.)
+> needed:
+> ```bash
+> kquitapp6 plasmashell
+> sleep 1
+> nohup plasmashell > /tmp/plasmashell.log 2>&1 &
+> disown
+> ```
+> A bare `plasmashell &` can get killed when the invoking shell/subshell
+> exits — `nohup` + `disown` together are what make it survive and actually
+> stick. (`kstart6` doesn't exist on Kubuntu 26.04 — only `kstart`/`kstart5`,
+> neither of which is `kstart6` — so this is the reliable form.) After it
+> restarts, check the log for errors:
+> ```bash
+> grep -iE "error|Cannot|TypeError|ReferenceError" /tmp/plasmashell.log
+> ```
 
 ## Using it
 
