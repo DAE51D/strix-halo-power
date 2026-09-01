@@ -7,6 +7,8 @@ reboot.
 
 Tested on a [GMKtec NucBox EVO-X2](https://www.gmktec.com/products/amd-ryzen%E2%84%A2-ai-max-395-evo-x2-ai-mini-pc) ([Kubuntu 26.04](https://kubuntu.org/news/kubuntu-26-04-release-notes/), Plasma 6.6).
 
+The Plasma widget is also on the [KDE Store](https://store.kde.org/p/2370068/) — but it's a thin D-Bus client with no function on its own, so install the full stack below first either way.
+
 Right-click the panel widget to pick a mode directly:
 
 ![Strix Halo Power Mode widget menu](docs/widget-menu.png)
