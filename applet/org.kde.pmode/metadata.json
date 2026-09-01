@@ -13,7 +13,7 @@
             }
         ],
         "Category": "System Information",
-        "License": "LGPL-2.1-or-later",
+        "License": "MIT",
         "FormFactors": [
             "desktop",
             "panel"

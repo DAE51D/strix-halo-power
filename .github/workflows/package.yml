@@ -1,0 +1,55 @@
+name: Package and Release Plasmoid
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: metadata
+        run: |
+          VERSION=$(python3 -c "import json; print(json.load(open('applet/org.kde.pmode/metadata.json'))['KPlugin']['Version'])")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "FILENAME=pmode-${VERSION}.plasmoid" >> $GITHUB_OUTPUT
+
+      - name: Package Plasmoid
+        run: |
+          cd applet/org.kde.pmode
+          zip -r "../../${{ steps.metadata.outputs.FILENAME }}" .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.metadata.outputs.FILENAME }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          body: |
+            Automated release for version ${{ steps.metadata.outputs.VERSION }}.
+
+            This is the Plasma panel widget only (`org.kde.pmode`). It talks to
+            the `com.evox2.powermode` D-Bus service, which is **not** part of
+            this package — install the full stack first (kernel driver,
+            privilege helper, D-Bus backend + bridge) via
+            `sudo ./install.sh` from the repo, then use this `.plasmoid` if
+            you only need to reinstall/update the widget itself.
+
+            ### Widget-only installation
+            1. Download the `.plasmoid` file below.
+            2. Install using:
+               ```bash
+               kpackagetool6 -t Plasma/Applet -u ${{ steps.metadata.outputs.FILENAME }}
+               ```
+               (use `-i` instead of `-u` for a first-time install)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
