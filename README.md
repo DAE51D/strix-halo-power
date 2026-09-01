@@ -76,6 +76,13 @@ To add the widget after install: right-click the Plasma panel → **Add
 Widgets…** → search **“Strix Halo Power Mode”**. Left-click cycles the mode;
 right-click picks one directly. The icon reflects the current mode.
 
+> **Plasmoids don't hot-reload QML.** If the widget doesn't show up in the
+> "Add Widgets" search right after a fresh install, or an upgrade (`kpackagetool6
+> --upgrade`) doesn't seem to take effect, restart plasmashell — no logout/login
+> needed: `kquitapp6 plasmashell; nohup plasmashell >/tmp/plasmashell.log 2>&1 & disown`.
+> (`kstart6` doesn't exist on Kubuntu 26.04 — only `kstart`/`kstart5`, neither of
+> which is `kstart6` — so the `nohup … & disown` form is the reliable one.)
+
 ## Using it
 
 **Widget** — left-click cycles `quiet → balanced → performance → quiet`;
