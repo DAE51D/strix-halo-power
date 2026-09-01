@@ -18,13 +18,13 @@ jobs:
       - name: Extract version
         id: metadata
         run: |
-          VERSION=$(python3 -c "import json; print(json.load(open('applet/org.kde.pmode/metadata.json'))['KPlugin']['Version'])")
+          VERSION=$(python3 -c "import json; print(json.load(open('applet/com.daevid.pmode/metadata.json'))['KPlugin']['Version'])")
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "FILENAME=pmode-${VERSION}.plasmoid" >> $GITHUB_OUTPUT
 
       - name: Package Plasmoid
         run: |
-          cd applet/org.kde.pmode
+          cd applet/com.daevid.pmode
           zip -r "../../${{ steps.metadata.outputs.FILENAME }}" .
 
       - name: Create Release
@@ -37,7 +37,7 @@ jobs:
           body: |
             Automated release for version ${{ steps.metadata.outputs.VERSION }}.
 
-            This is the Plasma panel widget only (`org.kde.pmode`). It talks to
+            This is the Plasma panel widget only (`com.daevid.pmode`). It talks to
             the `com.evox2.powermode` D-Bus service, which is **not** part of
             this package — install the full stack first (kernel driver,
             privilege helper, D-Bus backend + bridge) via

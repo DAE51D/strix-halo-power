@@ -120,8 +120,8 @@ systemctl --user enable --now pmode-bridge
 # --- 6. Plasma applet -------------------------------------------------------
 log "installing Plasma applet"
 # Remove a previous install first so re-runs (and upgrades) work cleanly.
-kpackagetool6 --type Plasma/Applet --remove org.kde.pmode 2>/dev/null || true
-kpackagetool6 --type Plasma/Applet --install applet/org.kde.pmode
+kpackagetool6 --type Plasma/Applet --remove com.daevid.pmode 2>/dev/null || true
+kpackagetool6 --type Plasma/Applet --install applet/com.daevid.pmode
 
 log "done. Add the 'Strix Halo Power Mode' widget to your panel."
 log "verify: gdbus call --session --dest com.evox2.powermode --object-path /com/evox2/powermode --method com.evox2.powermode.GetMode"

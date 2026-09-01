@@ -31,7 +31,7 @@ Five layers, each independently restartable, all surviving reboot:
    re-emits `ModeChanged` on change, so the widget tracks the button path
    promptly.
 
-5. **Plasma applet `org.kde.pmode`**. Left-click cycles, right-click picks a
+5. **Plasma applet `com.daevid.pmode`**. Left-click cycles, right-click picks a
    mode. The icon is bound to the current mode; a 2 s poll + `ModeChanged`
    `SignalWatcher` keep it current.
 

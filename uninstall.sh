@@ -20,7 +20,7 @@ rm -f "$HOME/.config/systemd/user/com.evox2.powermode.service" \
 systemctl --user daemon-reload
 
 log "removing Plasma applet"
-kpackagetool6 --type Plasma/Applet --remove org.kde.pmode 2>/dev/null || true
+kpackagetool6 --type Plasma/Applet --remove com.daevid.pmode 2>/dev/null || true
 
 log "removing installed binaries"
 rm -f "$HOME/.local/bin/powermode_service.py" "$HOME/.local/bin/pmode-bridge"

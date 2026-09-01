@@ -6,7 +6,7 @@ form under your account — not something an agent session can do for you,
 account creation and credential entry are off-limits regardless of
 permission mode).
 
-Unlike a self-contained widget, `org.kde.pmode` is a thin D-Bus client —
+Unlike a self-contained widget, `com.daevid.pmode` is a thin D-Bus client —
 it does nothing without the kernel driver + privilege helper + backend
 service also being installed (see README.md's stack table). That must be
 called out prominently wherever this gets listed, since installing just
@@ -14,11 +14,17 @@ the `.plasmoid` leaves the widget showing a disconnected/no-op state.
 
 ## Local prep (this session can do these)
 
-- [x] Fix `applet/org.kde.pmode/metadata.json`'s `License` field — it said
+- [x] Fix `applet/com.daevid.pmode/metadata.json`'s `License` field — it said
       `LGPL-2.1-or-later` but the repo's actual `LICENSE` is MIT (with the
       `driver/` submodule separately GPL-2.0, unaffected by this)
+- [x] Fix the applet's `KPlugin.Id` — it was `org.kde.pmode`, squatting on
+      the namespace KDE reserves for its own official components. Renamed
+      to `com.daevid.pmode` (matches the `knvtop` sibling project's
+      `com.daevid.knvtop`), including the directory itself
+      (`applet/com.daevid.pmode/`). Caught before the first store
+      submission went live, so no back-compat shim needed.
 - [x] Packaging script (`scripts/build-plasmoid.sh`) that builds
-      `pmode-<version>.plasmoid` (a zip of `applet/org.kde.pmode/`'s
+      `pmode-<version>.plasmoid` (a zip of `applet/com.daevid.pmode/`'s
       contents, `metadata.json` at the zip root) via `git archive`, same
       approach as the `knvtop` sibling project
 - [x] GitHub Actions release workflow (`.github/workflows/package.yml`) —

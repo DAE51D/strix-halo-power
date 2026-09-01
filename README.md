@@ -38,7 +38,7 @@ Press the `P-MODE` button to cycle:
 | Privilege helper | `pmode-write` + sudoers — writes the root-only sysfs file                                       | Yes —`/etc`, `/usr/local/bin`           |
 | D-Bus service    | `com.evox2.powermode.backend` — single validated writer, polls sysfs, emits `ModeChanged`     | Yes — enabled systemd**user** service |
 | D-Bus bridge     | `pmode-bridge` — C++/Qt, owns `com.evox2.powermode`, forwards to the backend                  | Yes — enabled systemd**user** service |
-| Plasma applet    | `org.kde.pmode` — the tray button / widget                                                      | Yes — installed to`~/.local`              |
+| Plasma applet    | `com.daevid.pmode` — the tray button / widget                                                   | Yes — installed to`~/.local`              |
 
 The kernel driver is a **git submodule** (`driver/`) tracking
 [`cmetz/ec-su_axb35-linux`](https://github.com/cmetz/ec-su_axb35-linux)
@@ -157,7 +157,7 @@ change, so the widget updates promptly on the button path.
 ## Uninstall
 
 ```bash
-kpackagetool6 --type Plasma/Applet --remove org.kde.pmode
+kpackagetool6 --type Plasma/Applet --remove com.daevid.pmode
 systemctl --user disable --now com.evox2.powermode pmode-bridge
 rm ~/.config/systemd/user/com.evox2.powermode.service ~/.config/systemd/user/pmode-bridge.service
 sudo rm /etc/sudoers.d/pmode /usr/local/bin/pmode-write \
@@ -170,7 +170,7 @@ sudo rmmod ec_su_axb35
 
 ```
 driver/                    submodule -> cmetz/ec-su_axb35-linux (the kernel driver)
-applet/org.kde.pmode/      Plasma 6 applet (main.qml + metadata.json)
+applet/com.daevid.pmode/   Plasma 6 applet (main.qml + metadata.json)
 service/
   powermode_service.py     D-Bus backend service (PyGObject)
   com.evox2.powermode.service   systemd user unit (backend)

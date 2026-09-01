@@ -1,7 +1,7 @@
 {
     "KPackageStructure": "Plasma/Applet",
     "KPlugin": {
-        "Id": "org.kde.pmode",
+        "Id": "com.daevid.pmode",
         "Name": "Strix Halo Power Mode",
         "Description": "Switch APU power mode (quiet/balanced/performance) on AMD Strix Halo (Ryzen AI Max) via D-Bus",
         "Icon": "battery-profile-balanced-symbolic",
