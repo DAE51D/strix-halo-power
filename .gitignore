@@ -1,4 +1,5 @@
 # build artifacts
+*.plasmoid
 *.o
 *.ko
 *.mod
