@@ -33,8 +33,8 @@ Five layers, each independently restartable, all surviving reboot:
 
 5. **Plasma applet `com.daevid.pmode`**. Left-click cycles, right-click picks a
    mode. The icon is bound to the current mode; a 2 s poll + `ModeChanged`
-   `SignalWatcher` keep it current. A 60 s timer reads `/proc/loadavg` and,
-   when the 1-min load stays below a configurable threshold for a configurable
+   `SignalWatcher` keep it current. A 60 s timer asks the D-Bus backend for
+   the 1-min load average and, when it stays below a configurable threshold for a configurable
    number of minutes (default 60), auto-switches to `quiet` via the same
    `SetQuiet()` D-Bus call the user actions use. Settings persist through
    `Plasmoid.configuration` (Plasma's per-applet config store).

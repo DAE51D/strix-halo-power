@@ -43,6 +43,9 @@ INTROSPECTION_XML = """
     <method name="GetMode">
       <arg name="mode" type="s" direction="out"/>
     </method>
+    <method name="GetLoadAverage">
+      <arg name="load" type="d" direction="out"/>
+    </method>
     <method name="SetMode">
       <arg name="mode" type="s" direction="in"/>
     </method>
@@ -151,6 +154,12 @@ class PowerModeService:
             if self._mode is None:
                 self._mode = _read_sysfs()
             invocation.return_value(GLib.Variant("(s)", (self._mode,)))
+        elif method == "GetLoadAverage":
+            try:
+                load = float(os.getloadavg()[0])
+            except (AttributeError, OSError):
+                load = -1.0
+            invocation.return_value(GLib.Variant("(d)", (load,)))
         elif method == "SetMode":
             mode = params.unpack()[0]
             self._do_set_mode(invocation, mode)

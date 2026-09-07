@@ -109,7 +109,7 @@ right-click picks a mode directly.
   When the system has been idle for this long, the APU automatically switches
   back to `quiet`.
 - *Idle threshold (CPU load)* (default 0.5). The system counts as "idle" when
-  the 1-minute load average (`/proc/loadavg`) is below this value. Lower is
+  the 1-minute load average reported by the D-Bus backend is below this value. Lower is
   stricter.
 
 The check runs every 60 s. Any load spike resets the idle counter. If you're

@@ -22,40 +22,35 @@ PlasmoidItem {
     readonly property real idleLoadThreshold: Plasmoid.configuration.idleLoadThreshold ?? 0.5
     property int idleSeconds: 0  // seconds the system has been continuously idle
 
-    function readLoadAvg() {
-        // Read /proc/loadavg first field (1-minute load average)
-        try {
-            const f = Qt.openUrlSync("file:///proc/loadavg");
-            if (f.open(QIODevice.ReadOnly)) {
-                const line = f.readLine().toString().trim();
-                f.close();
-                return parseFloat(line.split(" ")[0]);
-            }
-        } catch (e) {
-            // fall through
-        }
-        return -1;
-    }
-
     function checkIdle() {
         if (idleRevertMinutes <= 0) {
             idleSeconds = 0;
             return;
         }
-        const load = readLoadAvg();
-        if (load < 0) return; // couldn't read, skip this tick
-        if (load < idleLoadThreshold) {
-            idleSeconds += 60;
-        } else {
-            idleSeconds = 0;
-            return;
-        }
-        // If we've been idle long enough and not already in quiet mode, revert
-        if (idleSeconds >= idleRevertMinutes * 60 && currentMode !== "quiet") {
-            logDebug("idle for " + Math.floor(idleSeconds / 60) + " min, reverting to quiet");
-            setMode("quiet");
-            idleSeconds = 0;
-        }
+        const msg = new PlasmaDBus.dbusMessage({
+            service: "com.evox2.powermode",
+            path: "/com/evox2/powermode",
+            iface: "com.evox2.powermode",
+            member: "GetLoadAverage",
+            arguments: []
+        });
+        PlasmaDBus.SessionBus.asyncCall(msg, (reply) => {
+            if (reply.isError || !reply.values || reply.values.length === 0) return;
+            const load = Number(reply.values[0]);
+            if (load < 0) return;
+            if (load < idleLoadThreshold) {
+                idleSeconds += 60;
+            } else {
+                idleSeconds = 0;
+                return;
+            }
+            // If we've been idle long enough and not already in quiet mode, revert
+            if (idleSeconds >= idleRevertMinutes * 60 && currentMode !== "quiet") {
+                logDebug("idle for " + Math.floor(idleSeconds / 60) + " min, reverting to quiet");
+                setMode("quiet");
+                idleSeconds = 0;
+            }
+        }, () => {});
     }
 
     function refresh() {

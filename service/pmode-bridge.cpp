@@ -56,6 +56,7 @@ public:
 
 public slots:
     QString GetMode() { return callBackend("GetMode", {}).toString(); }
+    double GetLoadAverage() { return callBackend("GetLoadAverage", {}).toDouble(); }
     void SetMode(const QString &mode) { callBackendAsync("SetMode", {mode}); }
     QString Cycle() { return callBackend("Cycle", {}).toString(); }
     void Log(const QString &message) { callBackendAsync("Log", {message}); }
