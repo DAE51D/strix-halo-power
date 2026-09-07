@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.plasmoid
 import org.kde.kcmutils as KCM
@@ -7,46 +8,33 @@ import org.kde.kcmutils as KCM
 KCM.SimpleKCM {
     id: root
 
-    signal configurationChanged
+    property alias cfg_idleRevertMinutes: idleSpin.value
+    property real cfg_idleLoadThreshold: thresholdValues[thresholdCombo.currentIndex]
 
-    function saveConfig() {
-        // Plasmoid.configuration writes are persisted automatically by Plasma
-    }
+    readonly property var thresholdValues: [0.1, 0.25, 0.5, 1.0, 2.0, 4.0]
 
     Kirigami.FormLayout {
-        Kirigami.FormRow {
-            label: i18n("Auto-revert to power-save after idle:")
-            description: i18n("When the system is idle (no CPU load) for this many minutes, the APU power mode will automatically switch back to quiet. Set to 0 to disable.")
-
-            Kirigami.SpinBox {
-                id: idleSpin
-                from: 0
-                to: 1440
-                stepSize: 5
-                value: Plasmoid.configuration.idleRevertMinutes
-                onValueChanged: {
-                    Plasmoid.configuration.idleRevertMinutes = value
-                    root.configurationChanged()
-                }
-                suffixText: i18n("min")
+        SpinBox {
+            id: idleSpin
+            Kirigami.FormData.label: i18n("Auto-revert after idle:")
+            from: 0
+            to: 1440
+            stepSize: 5
+            value: 60
+            textFromValue: function(value, locale) {
+                return value === 0 ? i18n("Disabled") : i18n("%1 minutes", value)
             }
         }
 
-        Kirigami.FormRow {
-            label: i18n("Idle threshold (CPU load):")
-            description: i18n("The system is considered idle when the 1-minute load average is below this value. Lower values are stricter.")
-
-            Kirigami.SpinBox {
-                id: loadSpin
-                from: 0.1
-                to: 16
-                stepSize: 0.5
-                value: Plasmoid.configuration.idleLoadThreshold
-                onValueChanged: {
-                    Plasmoid.configuration.idleLoadThreshold = value
-                    root.configurationChanged()
+        ComboBox {
+            id: thresholdCombo
+            Kirigami.FormData.label: i18n("Idle load threshold:")
+            model: root.thresholdValues.map(function(value) { return value.toString() })
+            currentIndex: Math.max(0, root.thresholdValues.indexOf(Number(Plasmoid.configuration.idleLoadThreshold)))
+            onCurrentIndexChanged: {
+                if (currentIndex >= 0) {
+                    Plasmoid.configuration.idleLoadThreshold = root.thresholdValues[currentIndex]
                 }
-                suffixText: i18n("load")
             }
         }
     }
