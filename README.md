@@ -168,7 +168,7 @@ Bus `com.evox2.powermode`, object `/com/evox2/powermode`, interface
 | --------------------------------------------------------- | ------------- | ------------------------------------------------------ |
 | `Mode`                                                  | property (s)  | Current mode                                           |
 | `Modes`                                                 | property (as) | `["quiet", "balanced", "performance"]`               |
-| `Version`                                               | property (s)  | Service version                                        |
+| `Version`                                               | property (s)  | Service version (currently 1.1.1)                    |
 | `GetMode()`                                             | method → s   | Current mode                                           |
 | `SetMode(mode)`                                         | method (s)    | Validate + write sysfs + read back                     |
 | `SetQuiet()` / `SetBalanced()` / `SetPerformance()` | method        | No-arg setters (Plasma drops args — see TECHNICAL.md) |

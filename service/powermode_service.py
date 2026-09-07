@@ -23,7 +23,7 @@ from gi.repository import GLib, Gio, GObject
 BUS_NAME = "com.evox2.powermode.backend"
 OBJECT_PATH = "/com/evox2/powermode"
 INTERFACE = "com.evox2.powermode"
-VERSION = "1.0.0"
+VERSION = "1.1.1"
 MODES = ("quiet", "balanced", "performance")
 CYCLE_ORDER = {"quiet": "balanced", "balanced": "performance", "performance": "quiet"}
 SYSFS_PATH = "/sys/class/ec_su_axb35/apu/power_mode"
