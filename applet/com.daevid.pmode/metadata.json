@@ -5,7 +5,7 @@
         "Name": "Strix Halo Power Mode",
         "Description": "Switch APU power mode (quiet/balanced/performance) on AMD Strix Halo (Ryzen AI Max) via D-Bus",
         "Icon": "battery-profile-balanced-symbolic",
-        "Version": "1.0.0",
+        "Version": "1.1.0",
         "Authors": [
             {
                 "Name": "Daevid Vincent",

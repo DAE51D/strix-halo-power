@@ -102,6 +102,19 @@ right-click picks one directly. The icon reflects the current mode.
 **Widget** — left-click cycles `quiet → balanced → performance → quiet`;
 right-click picks a mode directly.
 
+**Auto-revert to power-save** — right-click the widget → **Configure** →
+**General** to set:
+
+- *Auto-revert to power-save after idle* (minutes, default 60; 0 disables).
+  When the system has been idle for this long, the APU automatically switches
+  back to `quiet`.
+- *Idle threshold (CPU load)* (default 0.5). The system counts as "idle" when
+  the 1-minute load average (`/proc/loadavg`) is below this value. Lower is
+  stricter.
+
+The check runs every 60 s. Any load spike resets the idle counter. If you're
+already in `quiet` mode the feature is a no-op.
+
 **CLI (D-Bus):**
 
 ```bash
@@ -191,7 +204,7 @@ sudo rmmod ec_su_axb35
 
 ```
 driver/                    submodule -> cmetz/ec-su_axb35-linux (the kernel driver)
-applet/com.daevid.pmode/   Plasma 6 applet (main.qml + metadata.json)
+applet/com.daevid.pmode/   Plasma 6 applet (main.qml, config UI, metadata.json)
 service/
   powermode_service.py     D-Bus backend service (PyGObject)
   com.evox2.powermode.service   systemd user unit (backend)
