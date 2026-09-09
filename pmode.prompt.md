@@ -546,6 +546,47 @@ kquitapp6 plasmashell && kstart plasmashell &
 - [ ] No busy-waiting in QML (verify with `qdbus`/`gdbus monitor` that updates are
       signal-driven).
 
+### 6.5 Plasma 6 configuration-page loader gotcha (verified 2026-09-08)
+
+For this Plasma 6.6/Kubuntu build, `ConfigCategory.source` resolution is
+surprisingly specific. A configuration category can appear in the sidebar while
+its page is completely blank if the page is nested under `contents/config/` or
+`contents/ui/config/` and the source path does not match Plasma's loader.
+
+The working layout for this applet is:
+
+```
+contents/
+├── config/
+│   ├── config.qml              # ConfigModel/ConfigCategory
+│   └── main.xml                # KConfig entries/defaults
+└── ui/
+    ├── main.qml
+    └── ConfigGeneral.qml       # configuration page, directly under ui/
+```
+
+Use a bare filename in `contents/config/config.qml`:
+
+```qml
+ConfigCategory {
+    name: i18n("General")
+    icon: "preferences-system"
+    source: "ConfigGeneral.qml"
+}
+```
+
+Do **not** use `source: "config/ConfigGeneral.qml"` or
+`source: "ui/config/ConfigGeneral.qml"` for this layout. The failure is not
+reported as a useful error from the applet; Plasma's journal instead shows
+`Could not convert argument 1 from  to QQuickItem*` / a Kirigami `PageRow`
+`TypeError`, and the configuration window shows the category with a blank page.
+
+For the page itself, start with a minimal `KCM.SimpleKCM` and plain Qt Quick
+controls/layouts. Add Kirigami form components only after the page visibly loads.
+Use `cfg_<name>` properties for entries declared in `contents/config/main.xml`.
+After each path/layout change, reinstall with `kpackagetool6` and refresh
+plasmashell; do not infer success from the package version or sidebar category.
+
 ---
 
 ## 7. Reference: Strix Halo wiki (the source of truth for semantics)

@@ -6,6 +6,6 @@ ConfigModel {
     ConfigCategory {
         name: i18n("General")
         icon: "preferences-system"
-        source: "ui/config/ConfigGeneral.qml"
+        source: "ConfigGeneral.qml"
     }
 }
