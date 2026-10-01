@@ -230,15 +230,16 @@ PlasmoidItem {
     }
 
     Plasmoid.toolTipMainText: i18n("Strix Halo Power Mode: %1", currentMode)
-    Plasmoid.toolTipSubText: {
-        let lines = [];
-        if (root.powerW > 0) lines.push(i18n("Power: %1 W", root.powerW.toFixed(1)));
-        if (root.tempC > 0) lines.push(i18n("Temperature: %1 °C", root.tempC.toFixed(1)));
-        if (root.fan1Rpm > 0) lines.push(i18n("Fan 1: %1 RPM", root.fan1Rpm));
-        if (root.fan2Rpm > 0) lines.push(i18n("Fan 2: %1 RPM", root.fan2Rpm));
-        if (root.fan3Rpm > 0) lines.push(i18n("Fan 3: %1 RPM", root.fan3Rpm));
-        if (root.load1 > 0) lines.push(i18n("Load: %1", root.load1.toFixed(2)));
-        return lines.join("\n");
+
+    // Custom hover tooltip showing full telemetry
+    toolTipItem: ToolTipView {
+        mode: root.currentMode
+        powerW: root.powerW
+        tempC: root.tempC
+        fan1Rpm: root.fan1Rpm
+        fan2Rpm: root.fan2Rpm
+        fan3Rpm: root.fan3Rpm
+        load1: root.load1
     }
 
     Plasmoid.contextualActions: [
