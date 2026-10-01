@@ -8,3 +8,4 @@ modules.order
 Module.symvers
 *.cmd
 *.moc
+__pycache__/
