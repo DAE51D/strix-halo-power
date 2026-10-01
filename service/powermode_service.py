@@ -197,24 +197,32 @@ def _ensure_energy_dir():
 
 
 def _load_energy():
-    """Load persisted energy data. Returns {total_wh, last_updated}."""
+    """Load persisted energy data. Returns {total_wh, last_updated, started}."""
     try:
         with open(ENERGY_FILE, "r") as f:
             data = json.load(f)
             return {
                 "total_wh": float(data.get("total_wh", 0)),
                 "last_updated": float(data.get("last_updated", 0)),
+                "started": float(data.get("started", time.time())),
             }
     except (OSError, ValueError, KeyError):
-        return {"total_wh": 0.0, "last_updated": 0.0}
+        return {"total_wh": 0.0, "last_updated": 0.0, "started": time.time()}
 
 
-def _save_energy(total_wh, last_updated):
+def _save_energy(total_wh, last_updated, started=None):
     """Persist energy data to disk."""
     _ensure_energy_dir()
     try:
         with open(ENERGY_FILE, "w") as f:
-            json.dump({"total_wh": total_wh, "last_updated": last_updated}, f)
+            json.dump(
+                {
+                    "total_wh": total_wh,
+                    "last_updated": last_updated,
+                    "started": started if started else time.time(),
+                },
+                f,
+            )
     except OSError as e:
         log.warning("failed to save energy data: %s", e)
 
@@ -457,11 +465,16 @@ class PowerModeService:
                     "total_wh": round(total_wh, 2),
                     "total_cost": total_cost,
                     "session_wh": 0,
+                    "started": self._energy.get("started", 0),
                 }
             )
             invocation.return_value(GLib.Variant("(s)", (payload,)))
         elif method == "ResetEnergy":
-            self._energy = {"total_wh": 0.0, "last_updated": time.time()}
+            self._energy = {
+                "total_wh": 0.0,
+                "last_updated": time.time(),
+                "started": time.time(),
+            }
             self._save_energy(0.0, self._energy["last_updated"])
             invocation.return_value(None)
         elif method == "GetRate":
@@ -596,7 +609,11 @@ def main():
     GLib.timeout_add(
         60000,
         lambda: (
-            svc._save_energy(svc._energy["total_wh"], svc._energy["last_updated"])
+            svc._save_energy(
+                svc._energy["total_wh"],
+                svc._energy["last_updated"],
+                svc._energy.get("started"),
+            )
             if svc._energy_dirty
             else True
         ),

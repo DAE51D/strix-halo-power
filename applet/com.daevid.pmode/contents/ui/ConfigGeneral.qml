@@ -14,6 +14,7 @@ KCM.SimpleKCM {
     property real totalCost: 0
     property real totalWh: 0
     property real ratePerKwh: 0.13
+    property real trackingStarted: 0
 
     readonly property var thresholdValues: [0.1, 0.25, 0.5, 1.0, 2.0, 4.0]
 
@@ -47,6 +48,7 @@ KCM.SimpleKCM {
                     const e = JSON.parse(reply.values[0]);
                     root.totalCost = e.total_cost ?? 0;
                     root.totalWh = e.total_wh ?? 0;
+                    root.trackingStarted = e.started ?? 0;
                 } catch (err) {}
             }
         }, () => {});
@@ -160,6 +162,14 @@ KCM.SimpleKCM {
         Label {
             text: i18n("Lifetime cost: $%1 (%2 kWh)", root.totalCost.toFixed(2), (root.totalWh / 1000.0).toFixed(2))
             wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
+        Label {
+            visible: root.trackingStarted > 0
+            text: i18n("Tracking since: %1", new Date(root.trackingStarted * 1000).toLocaleDateString())
+            wrapMode: Text.WordWrap
+            opacity: 0.7
             Layout.fillWidth: true
         }
 

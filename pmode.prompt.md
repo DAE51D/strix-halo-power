@@ -48,15 +48,34 @@
 | 2 | KDE Plasma applet (Kubuntu) | `applet/com.daevid.pmode/` | ~half day | #1 | ✅ done (v1.1.0) |
 | 3 | Kernel input-driver PR | `driver/` (submodule) | 1–2 days | author confirms button EC register | ✅ merged (PR #33) |
 | 4 | Wire #3 → #1 (button updates widget) | D-Bus service | ~1 h | #1 + #3 | ✅ done |
-| 5 | Power/temp readout in applet | `service/` + `applet/` | ~half day | nothing | ❌ todo |
-| 6 | Energy cost tracking (kWh, $/kWh) | `service/` + `applet/` | ~half day | #5 | ❌ todo |
+| 5 | Power/temp readout in applet | `service/` + `applet/` | ~half day | nothing | ✅ done |
+| 6 | Energy cost tracking (kWh, $/kWh) | `service/` + `applet/` | ~half day | #5 | ✅ done |
 | 7 | RGB LED control (select + off) | `driver/` + `service/` + `applet/` | varies | EC register map | ⛔ blocked |
 | 8 | Scheduled LED off-hours (night) | `service/` + `applet/` | ~1 day | #7 | ⛔ blocked |
 
-Items 1–4 are complete. **Next actionable items: #5 and #6** (power/temp display
-and energy cost tracking) — no blockers, no driver changes needed. Items 7–8
-(RGB control and scheduled off-hours) are blocked on finding the EC register map
-for the LED modes.
+Items 1–6 are complete (v1.2.0). Items 7–8 (RGB control and scheduled
+off-hours) are blocked on finding the EC register map for the LED modes.
+
+**Development workflow (verified 2026-10-01):** After making changes to the
+service, bridge, or applet:
+
+```bash
+# 1. Install updated files
+cp service/powermode_service.py ~/.local/bin/powermode_service.py
+# (rebuild bridge if changed — see install.sh step 5)
+kpackagetool6 --type Plasma/Applet --remove com.daevid.pmode
+kpackagetool6 --type Plasma/Applet --install applet/com.daevid.pmode
+
+# 2. Restart services
+systemctl --user restart com.evox2.powermode pmode-bridge
+
+# 3. Reload Plasma shell (required for applet changes to take effect)
+systemctl --user restart plasma-plasmashell.service
+```
+
+**Do NOT use** `kquitapp6 plasmashell && kstart6 plasmashell` — `kstart6` is not
+available on Kubuntu 26.04/Plasma 6.6 and the service name lookup fails. The
+systemd unit `plasma-plasmashell.service` is the correct way.
 
 ---
 
@@ -733,7 +752,7 @@ service should warn on every `ModeChanged` (see §4.2.5).
       on the session bus (works around Plasma 6.6 D-Bus arg-dropping bug).
 - [x] End-to-end test: press button → applet updates → `gdbus monitor` shows signal.
 
-### Phase 5 — Power/temp readout (#5)  [~half day, no blockers]
+### Phase 5 — Power/temp readout (#5)  [✅ DONE]
 - [ ] Add `GetTelemetry()` method to the D-Bus service returning `{power_w,
       temp_c, fan1_rpm, fan2_rpm, fan3_rpm, mode, load1}`.
 - [ ] Service polls power via `amd-smi metric --json` (socket_power), falling back
@@ -754,7 +773,7 @@ service should warn on every `ModeChanged` (see §4.2.5).
 - [ ] Acceptance: `gdbus call ... GetTelemetry` returns real values; applet updates
       within ~2 s of a load change; config page shows live load; no busy-waiting in QML.
 
-### Phase 6 — Energy cost tracking (#6)  [~half day, needs #5]
+### Phase 6 — Energy cost tracking (#6)  [✅ DONE]
 - [ ] Service: maintain a running energy accumulator (Wh) in memory, persisted to
       `~/.local/share/evox2-power/energy.json` (JSON: `{total_wh, last_updated,
       session_wh}`) every 60 s and on shutdown. Formula: `dWh = power_w × dt / 3600`.

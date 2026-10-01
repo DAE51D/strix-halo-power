@@ -203,29 +203,30 @@ PlasmoidItem {
         }
     }
 
-    Kirigami.Icon {
+    // Row layout: icon + telemetry text
+    Row {
         anchors.centerIn: parent
-        width: 24
-        height: 24
-        source: root.iconForMode(currentMode)
-    }
-
-    // Compact text label showing power W and temp °C next to the icon
-    // (only when not in a narrow panel, or when explicitly shown)
-    Label {
-        visible: !root.inPanel || Plasmoid.configuration.showTelemetry !== false
+        spacing: 4
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: 28
-        verticalAlignment: Text.AlignVCenter
-        elide: Text.ElideRight
-        font.pointSize: 9
-        text: {
-            let parts = [];
-            if (root.powerW > 0) parts.push(root.powerW.toFixed(0) + "W");
-            if (root.tempC > 0) parts.push(root.tempC.toFixed(0) + "°C");
-            return parts.join(" ");
+
+        Kirigami.Icon {
+            width: 20
+            height: 20
+            anchors.verticalCenter: parent.verticalCenter
+            source: root.iconForMode(currentMode)
+        }
+
+        Label {
+            anchors.verticalCenter: parent.verticalCenter
+            elide: Text.ElideRight
+            font.pointSize: 9
+            text: {
+                let parts = [];
+                if (root.powerW > 0) parts.push(root.powerW.toFixed(0) + "W");
+                if (root.tempC > 0) parts.push(root.tempC.toFixed(0) + "°");
+                return parts.length ? parts.join(" ") : currentMode;
+            }
         }
     }
 
