@@ -229,8 +229,6 @@ PlasmoidItem {
         }
     }
 
-    Plasmoid.toolTipMainText: i18n("Strix Halo Power Mode: %1", currentMode)
-
     // Custom hover tooltip showing full telemetry
     toolTipItem: ToolTipView {
         mode: root.currentMode
