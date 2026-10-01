@@ -672,6 +672,12 @@ The EVO-X2's vendor utility (GMKtec's Windows software) controls the fan light v
   (direct port I/O via `inp/outp`, a kernel driver, or USB HID).
 - **USB HID check:** run `lsusb -v` and `dmesg | grep -i hid` — if the front RGB
   button is a USB device rather than EC, the modes might be sent over HID.
+- **USB discovery (2026-09-30):** found a vendor-specific USB device at Bus 003
+  Port 004: `Synaptics, Inc. (0x06cb:0088)` with vendor-specific class (255),
+  bulk IN/OUT endpoints, and no product/manufacturer string. This is *not* a
+  touchpad (this is a mini PC) and could be the RGB controller, a fingerprint
+  reader, or some other onboard peripheral. Worth investigating: send known RGB
+  mode commands to its bulk endpoint and observe if the fan light changes.
 - **EC register dump:** write a small userspace tool that reads all 0x00-0xFF EC
   registers (via `/dev/ec_su_axb35` or the driver's raw I/O), record the values,
   switch RGB modes via the Windows utility (or the front button), read the registers
