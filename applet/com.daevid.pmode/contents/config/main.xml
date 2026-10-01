@@ -11,5 +11,11 @@
         <entry name="idleLoadThreshold" type="Double">
             <default>0.5</default>
         </entry>
+        <entry name="showTelemetry" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="energyRatePerKwh" type="Double">
+            <default>0.13</default>
+        </entry>
     </group>
 </kcfg>

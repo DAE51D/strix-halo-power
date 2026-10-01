@@ -57,6 +57,11 @@ public:
 public slots:
     QString GetMode() { return callBackend("GetMode", {}).toString(); }
     double GetLoadAverage() { return callBackend("GetLoadAverage", {}).toDouble(); }
+    QString GetTelemetry() { return callBackend("GetTelemetry", {}).toString(); }
+    QString GetEnergy() { return callBackend("GetEnergy", {}).toString(); }
+    void ResetEnergy() { callBackendAsync("ResetEnergy", {}); }
+    double GetRate() { return callBackend("GetRate", {}).toDouble(); }
+    void SetRate(const QString &rate) { callBackendAsync("SetRate", {rate}); }
     void SetMode(const QString &mode) { callBackendAsync("SetMode", {mode}); }
     QString Cycle() { return callBackend("Cycle", {}).toString(); }
     void Log(const QString &message) { callBackendAsync("Log", {message}); }
@@ -96,6 +101,14 @@ private slots:
             out << m << QStringLiteral("poll");
             QDBusConnection::sessionBus().send(out);
         }
+        // Also poll telemetry and re-emit TelemetryUpdated on change
+        const QString t = _readTelemetry();
+        if (!t.isEmpty() && t != _lastTelemetry) {
+            _lastTelemetry = t;
+            QDBusMessage out = QDBusMessage::createSignal(BRIDGE_PATH, BRIDGE_IFACE, "TelemetryUpdated");
+            out << t;
+            QDBusConnection::sessionBus().send(out);
+        }
     }
 
 private:
@@ -108,7 +121,17 @@ private:
         return reply.arguments().first().toString();
     }
 
+    QString _readTelemetry()
+    {
+        QDBusMessage m = QDBusMessage::createMethodCall(BACKEND_SERVICE, BACKEND_PATH, BACKEND_IFACE, "GetTelemetry");
+        QDBusMessage reply = g_backend->call(m, QDBus::Block, 500);
+        if (reply.type() == QDBusMessage::ErrorMessage || reply.arguments().isEmpty())
+            return _lastTelemetry;
+        return reply.arguments().first().toString();
+    }
+
     QString _lastMode;
+    QString _lastTelemetry;
     QTimer _timer;
 };
 

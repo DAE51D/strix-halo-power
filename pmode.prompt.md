@@ -11,25 +11,52 @@
 >    front button** is exposed as a standard Linux input key, and the D-Bus service
 >    reacts to it (this is the "proper, not-hack" way to get Windows-parity button
 >    behavior on Linux).
+> 4. **Power/temp readout + energy cost tracking** in the applet (like knvtop).
+> 5. **RGB LED control** (select box + off) — *blocked on driver support*.
+> 6. **Scheduled LED off-hours** (night mode) — depends on #5.
 >
-> Everything below was verified on this specific box on **2026-08-18**. Re-verify the
-> "Current state on this box" section before relying on it, but the hardware facts
-> (ACPI tables, EC objects, sysfs layout) are stable and do not need re-derivation.
+> **2026-09-29 update:** Owner requested RGB light control, power/temp display, and
+> energy cost tracking. Research findings:
+>
+> - **RGB is NOT currently exposed** by the Linux driver or any known EC register map.
+>   The EVO-X2 has a dedicated front button for RGB (13 modes on Windows), but neither
+>   `ec-su_axb35` nor the Windows EC tools (`ec-su_axb35-win`, `FanControl.AXB35`)
+>   expose LED control. The vendor utility likely uses USB HID or undocumented EC
+>   commands. RGB support requires either reverse-engineering the EC registers or
+>   getting them from the driver author (loom@mopper.de) — same situation as the
+>   power-mode button was before the input-button PR.
+> - **Power W** is available via `amd-smi metric --json` (socket_power) with sysfs
+>   hwmon fallback (`/sys/class/hwmon/hwmon*/power1_input` for amdgpu). Same approach
+>   as knvtop's `knvtop_poll.py`.
+> - **Temp** is available from both the EC driver (`/sys/class/ec_su_axb35/temp1/temp`)
+>   and amd-smi. EC temp is the APU temp register (0x70).
+> - **Energy cost** is a userspace integration: accumulate power W × time, persist to
+>   a file, multiply by configured rate ($0.13/kWh default).
+>
+> Everything below was verified on this specific box on **2026-08-18** (original brief)
+> and **2026-09-29** (power/RGB research). Re-verify the "Current state on this box"
+> section before relying on it, but the hardware facts (ACPI tables, EC objects,
+> sysfs layout) are stable and do not need re-derivation.
 
 ---
 
 ## 0. TL;DR — what to build, in what order
 
-| # | Deliverable | Where it lives | Effort | Blocked on |
-|---|-------------|----------------|--------|------------|
-| 1 | D-Bus service (DE-agnostic core) | `~/pmode/` (new) | ~half day | nothing |
-| 2 | KDE Plasma applet (Kubuntu) | `~/pmode/plasma/` | ~half day | #1 |
-| 3 | Kernel input-driver PR | fork of `cmetz/ec-su_axb35-linux` | 1–2 days | author confirms button EC register |
-| 4 | Wire #3 → #1 (button updates widget) | D-Bus service | ~1 h | #1 + #3 |
+| # | Deliverable | Where it lives | Effort | Blocked on | Status |
+|---|-------------|----------------|--------|------------|--------|
+| 1 | D-Bus service (DE-agnostic core) | `service/` | ~half day | nothing | ✅ done (v1.1.0) |
+| 2 | KDE Plasma applet (Kubuntu) | `applet/com.daevid.pmode/` | ~half day | #1 | ✅ done (v1.1.0) |
+| 3 | Kernel input-driver PR | `driver/` (submodule) | 1–2 days | author confirms button EC register | ✅ merged (PR #33) |
+| 4 | Wire #3 → #1 (button updates widget) | D-Bus service | ~1 h | #1 + #3 | ✅ done |
+| 5 | Power/temp readout in applet | `service/` + `applet/` | ~half day | nothing | ❌ todo |
+| 6 | Energy cost tracking (kWh, $/kWh) | `service/` + `applet/` | ~half day | #5 | ❌ todo |
+| 7 | RGB LED control (select + off) | `driver/` + `service/` + `applet/` | varies | EC register map | ⛔ blocked |
+| 8 | Scheduled LED off-hours (night) | `service/` + `applet/` | ~1 day | #7 | ⛔ blocked |
 
-Do #1 and #2 first — they give a working "show mode + click to change" UX **today**,
-independent of the kernel PR. #3 is the piece that makes the *physical button* work
-in Linux; it is the only part that genuinely needs the module author.
+Items 1–4 are complete. **Next actionable items: #5 and #6** (power/temp display
+and energy cost tracking) — no blockers, no driver changes needed. Items 7–8
+(RGB control and scheduled off-hours) are blocked on finding the EC register map
+for the LED modes.
 
 ---
 
@@ -124,6 +151,36 @@ ec_su_axb35
     ├── min          (RO)
     └── max          (RO)
 ```
+
+**RGB LED control: NOT available.** The EVO-X2 has a dedicated front button for the
+system fan RGB light (13 modes on Windows, "off" available), but no sysfs node,
+no EC register mapping, and no known userspace tool exposes it. The Windows vendor
+utility likely controls it via USB HID or undocumented EC commands. To add RGB
+support, we need one of:
+
+1. **Reverse-engineer the EC registers** by dumping the EC flash and comparing
+   register values across RGB mode changes (doable but time-consuming; the EC is
+   an ITE IT5570E at ports 0x62/0x66).
+2. **Get the register map from the driver author** (loom@mopper.de) — he already
+   reverse-engineered power mode (0x31), fans (0x21-0x29), and temp (0x70), so
+   he likely knows where the LED registers are too.
+3. **Use the vendor's Windows utility** in a VM with passthrough to dump the
+   registers it writes when switching modes (requires the vendor utility + a way
+   to intercept EC writes).
+
+Once we have the register, it's a small addition to the driver (same pattern as
+power mode: read/write sysfs attribute) and a new D-Bus method (`SetLightMode`,
+`GetLightMode`) in the service.
+
+**Power draw: not from the EC.** The EC doesn't expose power consumption. Use
+the same sources as knvtop (`knvtop_poll.py`):
+
+1. `amd-smi metric --json` → `gpu_data[0].power.socket_power` (W) — preferred.
+2. Fallback: `/sys/class/hwmon/hwmon*/power1_input` (µW) for the hwmon named
+   `amdgpu` (resolve by name, not index).
+
+EC temp (`temp1/temp`) is the APU temperature. For comparison, amd-smi also
+exposes `apu_temperature_gfx` and `edge` temps.
 
 Power-mode semantics (from the Strix Halo wiki, §7):
 
@@ -598,6 +655,31 @@ plasmashell; do not infer success from the package version or sidebar category.
 - FanControl AXB35 plugin (Windows, no secure-boot-disable): `https://github.com/pajtony/FanControl.AXB35`
 - RyzenAdj (fine-tune power limits): `https://github.com/FlyGoat/RyzenAdj`
 - Board vendor list: `https://strixhalo-homelab.d7.wtf/Hardware/Boards/Sixunited-AXB35`
+- knvtop (power/temp polling reference): `~/Code/knvtop/com.daevid.knvtop/backend/knvtop_poll.py`
+  — see `gpu_sample()` for the `amd-smi` + sysfs hwmon fallback pattern.
+
+**RGB LED control research (2026-09-29):**
+
+Neither the Linux driver nor any public Windows EC tool exposes RGB LED control.
+The EVO-X2's vendor utility (GMKtec's Windows software) controls the fan light via
+13 modes + off, but the mechanism is undocumented. Leads for reverse-engineering:
+
+- **EC type:** ITE IT5570E at I/O ports 0x62 (data) / 0x66 (command). Known
+  registers: 0x21-0x29 (fans), 0x31 (power mode), 0x35-0x38 (fan RPM), 0x70 (temp).
+  LED registers are likely nearby (try 0x2B-0x30, 0x32-0x34, 0x39+).
+- **Windows vendor utility:** check the GMKtec support page for the EVO-X2 Windows
+  control software. Run it under a debugger or API monitor to see what it calls
+  (direct port I/O via `inp/outp`, a kernel driver, or USB HID).
+- **USB HID check:** run `lsusb -v` and `dmesg | grep -i hid` — if the front RGB
+  button is a USB device rather than EC, the modes might be sent over HID.
+- **EC register dump:** write a small userspace tool that reads all 0x00-0xFF EC
+  registers (via `/dev/ec_su_axb35` or the driver's raw I/O), record the values,
+  switch RGB modes via the Windows utility (or the front button), read the registers
+  again, and diff. The changed byte(s) are the LED registers.
+- **Strix Halo Discord:** `https://discord.gg/pnPRyucNrG` — community may have
+  already reverse-engineered the LED registers.
+- **Ask the author:** loom@mopper.de (driver author) likely has the full register
+  map from his reverse-engineering work.
 
 **RyzenAdj gotcha (repeated because it bites):** changing the power mode via the EC
 resets `STAPM LIMIT`, `PPT LIMIT FAST`, `PPT LIMIT SLOW` to the per-mode defaults
@@ -609,41 +691,113 @@ service should warn on every `ModeChanged` (see §4.2.5).
 
 ## 8. Implementation checklist (copy into a todo list)
 
-### Phase 1 — D-Bus service (#1)  [~half day, no blockers]
-- [ ] Create `~/pmode/` skeleton.
-- [ ] Write `powermode_service.py` (gdbus): properties `Mode`/`Modes`/`Version`,
+### Phase 1 — D-Bus service (#1)  [✅ DONE v1.1.0]
+- [x] Create `~/pmode/` skeleton.
+- [x] Write `powermode_service.py` (gdbus): properties `Mode`/`Modes`/`Version`,
       methods `GetMode`/`SetMode`/`Cycle`, signal `ModeChanged`.
-- [ ] Implement sysfs watch (inotify preferred, poll fallback), debounced.
-- [ ] Validate `SetMode`; raise `InvalidMode` on bad input.
-- [ ] Log RyzenAdj warning on every mode change.
-- [ ] Single-instance guard (D-Bus name ownership).
-- [ ] `com.evox2.powermode.service` user unit; enable.
-- [ ] udev rule + `ec_su_axb35` group for sysfs write permission.
-- [ ] Verify all §4.7 acceptance criteria with `gdbus`.
+- [x] Implement sysfs watch (inotify preferred, poll fallback), debounced.
+- [x] Validate `SetMode`; raise `InvalidMode` on bad input.
+- [x] Log RyzenAdj warning on every mode change.
+- [x] Single-instance guard (D-Bus name ownership).
+- [x] `com.evox2.powermode.service` user unit; enable.
+- [x] udev rule + `ec_su_axb35` group for sysfs write permission.
+- [x] Verify all §4.7 acceptance criteria with `gdbus`.
 
-### Phase 2 — Plasma applet (#2)  [~half day, needs #1]
-- [ ] `metadata.json` + `main.qml` + `powermode.js`.
-- [ ] Icon + label reflecting `Mode`; subscribe to `ModeChanged`.
-- [ ] Click menu: 3 modes + Cycle; call D-Bus methods.
-- [ ] Install via `kpackagetool6`; verify §6.4 acceptance criteria.
-- [ ] (Nice-to-have) RPM/temp readout in a right-click panel.
+### Phase 2 — Plasma applet (#2)  [✅ DONE v1.1.0]
+- [x] `metadata.json` + `main.qml` + `powermode.js`.
+- [x] Icon + label reflecting `Mode`; subscribe to `ModeChanged`.
+- [x] Click menu: 3 modes + Cycle; call D-Bus methods.
+- [x] Install via `kpackagetool6`; verify §6.4 acceptance criteria.
+- [x] Idle-revert to quiet mode (configurable minutes + load threshold).
 
-### Phase 3 — Kernel input-driver PR (#3)  [1–2 days, needs author]
-- [ ] Open issue on `cmetz/ec-su_axb35-linux` asking for: `SPMF` read offset,
+### Phase 3 — Kernel input-driver PR (#3)  [✅ DONE — merged PR #33]
+- [x] Open issue on `cmetz/ec-su_axb35-linux` asking for: `SPMF` read offset,
       preset-write register, and the `_Q74` GPE/notify number for the front button.
-- [ ] On reply: add `src/input_dev.c` (or extend driver) registering `KEY_PROG1`
-      (or chosen vendor key) on the `_Q74` event.
-- [ ] Update Kbuild/Makefile + README.
-- [ ] Add DKMS (`dkms.conf`) for `ec_su_axb35` (+ input driver); migrate off the
+- [x] On reply: add `src/input_dev.c` (or extend driver) registering `KEY_POWER`
+      on the power-mode change event.
+- [x] Update Kbuild/Makefile + README.
+- [x] Add DKMS (`dkms.conf`) for `ec_su_axb35` (+ input driver); migrate off the
       bare `.ko` and `/etc/modules` line.
-- [ ] Submit PR; tag the wiki / repo.
+- [x] Submit PR; tag the wiki / repo.
 
-### Phase 4 — Wire button → widget (#4)  [~1 h, needs #1 + #3]
-- [ ] Confirm the D-Bus service's watch loop fires `ModeChanged` when the physical
+### Phase 4 — Wire button → widget (#4)  [✅ DONE]
+- [x] Confirm the D-Bus service's watch loop fires `ModeChanged` when the physical
       button is pressed (it should, since the EC updates sysfs).
-- [ ] If the input key (#3) is preferred as the trigger, add a udev rule or a tiny
-      listener that calls `com.evox2.powermode.Cycle()` on `KEY_PROG1`.
-- [ ] End-to-end test: press button → applet updates → `gdbus monitor` shows signal.
+- [x] C++ bridge (`pmode-bridge.cpp`) polls backend `Mode` and re-emits `ModeChanged`
+      on the session bus (works around Plasma 6.6 D-Bus arg-dropping bug).
+- [x] End-to-end test: press button → applet updates → `gdbus monitor` shows signal.
+
+### Phase 5 — Power/temp readout (#5)  [~half day, no blockers]
+- [ ] Add `GetTelemetry()` method to the D-Bus service returning `{power_w,
+      temp_c, fan1_rpm, fan2_rpm, fan3_rpm, mode, load1}`.
+- [ ] Service polls power via `amd-smi metric --json` (socket_power), falling back
+      to `/sys/class/hwmon/hwmon*/power1_input` (amdgpu hwmon). Temp from
+      `/sys/class/ec_su_axb35/temp1/temp`. Fan RPMs from `/sys/class/ec_su_axb35/fanX/rpm`.
+      Load average from `os.getloadavg()[0]` (already available via `GetLoadAverage`).
+      Poll interval ~1 s (separate timer from the mode poll).
+- [ ] Emit a `TelemetryUpdated` signal when values change significantly (>1 W, >1°C,
+      >50 RPM, >0.1 load) to avoid spamming the applet.
+- [ ] Applet: show power W and temp °C next to the mode icon in the panel (compact
+      display like knvtop). On hover/tooltip: full stats (all fans, mode, cost, load).
+- [ ] **Config page improvement:** add a live load average readout next to the
+      threshold dropdown (e.g. "Current load: 0.32") so users can actually calibrate
+      the threshold instead of guessing. On a 16-core box, 0.5 means "roughly one
+      light task" — background services (indexing, updates, chat apps) can easily
+      keep it above that. Show the value in real time while the config window is
+      open so the user can see what different workloads look like.
+- [ ] Acceptance: `gdbus call ... GetTelemetry` returns real values; applet updates
+      within ~2 s of a load change; config page shows live load; no busy-waiting in QML.
+
+### Phase 6 — Energy cost tracking (#6)  [~half day, needs #5]
+- [ ] Service: maintain a running energy accumulator (Wh) in memory, persisted to
+      `~/.local/share/evox2-power/energy.json` (JSON: `{total_wh, last_updated,
+      session_wh}`) every 60 s and on shutdown. Formula: `dWh = power_w × dt / 3600`.
+- [ ] Configurable rate: `cfg_rate_cents_per_kwh` (default 13.0 cents, i.e. $0.13).
+      Stored in applet config (`Plasmoid.configuration`).
+- [ ] New D-Bus methods: `GetEnergy()` → `{total_wh, total_cost, session_wh}`,
+      `ResetEnergy()` (zero the accumulator), `GetRate()` / `SetRate(rate)`.
+- [ ] Applet config page: add a "Cost" section with:
+    - Displayed total cost (e.g. "$2.34 lifetime").
+    - Rate input field (cents/kWh, default 13).
+    - "Reset" button (clears lifetime total).
+- [ ] Applet display: show lifetime cost in the tooltip alongside power/temp.
+- [ ] Handle reboots: on service start, read the persisted total, continue from
+      where it left off. The box's uptime is tracked via `last_updated` timestamp.
+- [ ] Acceptance: run a load test for 5 min, verify Wh accumulation is reasonable
+      (e.g. 60 W × 300 s ≈ 5 Wh); restart service, verify it continues from the
+      saved total; change rate, verify cost recalculates.
+
+### Phase 7 — RGB LED control (#7)  [BLOCKED — needs EC register map]
+- [ ] **Blocker:** find the EC register(s) for RGB LED modes. Options:
+    - [ ] Ask driver author (loom@mopper.de) for the register map — he already has
+          power mode (0x31), fans (0x21-0x29), temp (0x70).
+    - [ ] Reverse-engineer: run the Windows vendor utility in a VM with EC passthrough,
+          log EC writes via `ec_su_axb35` debug or a port monitor while switching modes.
+    - [ ] Check if the RGB is USB HID instead (check `lsusb` output for a GMKtec/HID
+          device; the front button might be a USB device, not EC).
+- [ ] Once register is known: add `light_mode` sysfs attribute to the driver
+      (pattern: same as `power_mode` — RW, read/write a byte, map values to
+      named modes: `off`, `breath`, `cycle`, `static_r`, `static_g`, `static_b`,
+      `static_rg`, `static_rb`, `static_gb`, `static_rgb`, `blink`, `strobe`,
+      `fade` — the 13 Windows modes + off).
+- [ ] D-Bus service: `GetLightMode()`, `SetLightMode(mode)`, `LightChanged(mode)`.
+- [ ] Applet: add a dropdown/select for light mode in the config page + a quick
+      "lights off" toggle in the context menu.
+- [ ] Acceptance: `echo breath > /sys/class/ec_su_axb35/apu/light_mode` changes
+      the fan light; applet reflects the change; pressing the physical RGB button
+      is detected (if it writes to the same register).
+
+### Phase 8 — Scheduled LED off-hours (#8)  [BLOCKED — needs #7]
+- [ ] Service: configurable schedule (start/end time, e.g. 22:00–06:00) stored
+      in `~/.local/share/evox2-power/schedule.json` or applet config.
+- [ ] On schedule start: save current light mode, set lights to off. On schedule
+      end: restore the saved mode.
+- [ ] Applet config: "Night mode" section with enable toggle, start time, end time.
+- [ ] Edge cases: if the box boots during the off window, lights stay off until
+      the window ends. If user manually changes lights during the window, respect
+      the override (don't fight the user) — or add a "force" toggle.
+- [ ] Acceptance: set schedule to 21:00–05:00, verify lights turn off at 21:00,
+      turn back on at 05:00 (or restored to previous mode).
 
 ---
 

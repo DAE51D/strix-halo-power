@@ -17,6 +17,47 @@ PlasmoidItem {
 
     property string currentMode: "balanced"
 
+    // Telemetry (populated by TelemetryUpdated signal and GetTelemetry call)
+    property real powerW: 0
+    property real tempC: 0
+    property int fan1Rpm: 0
+    property int fan2Rpm: 0
+    property int fan3Rpm: 0
+    property real load1: 0
+
+    // Energy cost (populated by GetEnergy call)
+    property real totalCost: 0
+    property real sessionWh: 0
+
+    function updateTelemetry(jsonStr) {
+        try {
+            const t = JSON.parse(jsonStr);
+            if (t.power_w !== undefined) powerW = t.power_w;
+            if (t.temp_c !== undefined) tempC = t.temp_c;
+            if (t.fan1_rpm !== undefined) fan1Rpm = t.fan1_rpm;
+            if (t.fan2_rpm !== undefined) fan2Rpm = t.fan2_rpm;
+            if (t.fan3_rpm !== undefined) fan3Rpm = t.fan3_rpm;
+            if (t.load1 !== undefined) load1 = t.load1;
+        } catch (e) {
+            console.log("pmode: failed to parse telemetry:", e);
+        }
+    }
+
+    function refreshTelemetry() {
+        const msg = new PlasmaDBus.dbusMessage({
+            service: "com.evox2.powermode",
+            path: "/com/evox2/powermode",
+            iface: "com.evox2.powermode",
+            member: "GetTelemetry",
+            arguments: []
+        });
+        PlasmaDBus.SessionBus.asyncCall(msg, (reply) => {
+            if (!reply.isError && reply.values && reply.values.length > 0) {
+                updateTelemetry(reply.values[0]);
+            }
+        }, () => {});
+    }
+
     // Idle-revert settings (persisted via Plasmoid.configuration)
     readonly property int idleRevertMinutes: Plasmoid.configuration.idleRevertMinutes ?? 60
     readonly property real idleLoadThreshold: Plasmoid.configuration.idleLoadThreshold ?? 0.5
@@ -125,13 +166,17 @@ PlasmoidItem {
     Component.onCompleted: {
         root.logDebug("applet loaded, initial refresh")
         refresh()
+        refreshTelemetry()
     }
 
     Timer {
         interval: 2000
         repeat: true
         running: true
-        onTriggered: root.refresh()
+        onTriggered: {
+            root.refresh()
+            root.refreshTelemetry()
+        }
     }
 
     // Idle-revert check: runs every 60 s
@@ -152,6 +197,10 @@ PlasmoidItem {
         function dbusModeChanged(mode, source) {
             root.currentMode = mode;
         }
+
+        function dbusTelemetryUpdated(telemetry) {
+            root.updateTelemetry(telemetry);
+        }
     }
 
     Kirigami.Icon {
@@ -159,6 +208,37 @@ PlasmoidItem {
         width: 24
         height: 24
         source: root.iconForMode(currentMode)
+    }
+
+    // Compact text label showing power W and temp °C next to the icon
+    // (only when not in a narrow panel, or when explicitly shown)
+    Label {
+        visible: !root.inPanel || Plasmoid.configuration.showTelemetry !== false
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.leftMargin: 28
+        verticalAlignment: Text.AlignVCenter
+        elide: Text.ElideRight
+        font.pointSize: 9
+        text: {
+            let parts = [];
+            if (root.powerW > 0) parts.push(root.powerW.toFixed(0) + "W");
+            if (root.tempC > 0) parts.push(root.tempC.toFixed(0) + "°C");
+            return parts.join(" ");
+        }
+    }
+
+    Plasmoid.toolTipMainText: i18n("Strix Halo Power Mode: %1", currentMode)
+    Plasmoid.toolTipSubText: {
+        let lines = [];
+        if (root.powerW > 0) lines.push(i18n("Power: %1 W", root.powerW.toFixed(1)));
+        if (root.tempC > 0) lines.push(i18n("Temperature: %1 °C", root.tempC.toFixed(1)));
+        if (root.fan1Rpm > 0) lines.push(i18n("Fan 1: %1 RPM", root.fan1Rpm));
+        if (root.fan2Rpm > 0) lines.push(i18n("Fan 2: %1 RPM", root.fan2Rpm));
+        if (root.fan3Rpm > 0) lines.push(i18n("Fan 3: %1 RPM", root.fan3Rpm));
+        if (root.load1 > 0) lines.push(i18n("Load: %1", root.load1.toFixed(2)));
+        return lines.join("\n");
     }
 
     Plasmoid.contextualActions: [
