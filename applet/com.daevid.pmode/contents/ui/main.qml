@@ -1,7 +1,9 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.core as PlasmaCore
+import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.plasmoid
 import org.kde.plasma.workspace.dbus as PlasmaDBus
 
@@ -15,6 +17,8 @@ PlasmoidItem {
         PlasmaCore.Types.LeftEdge,
     ].includes(Plasmoid.location)
 
+    Plasmoid.backgroundHints: PlasmaCore.Types.DefaultBackground
+
     property string currentMode: "balanced"
 
     // Telemetry (populated by TelemetryUpdated signal and GetTelemetry call)
@@ -27,7 +31,7 @@ PlasmoidItem {
 
     // Energy cost (populated by GetEnergy call)
     property real totalCost: 0
-    property real sessionWh: 0
+    property real trackingStarted: 0
 
     function updateTelemetry(jsonStr) {
         try {
@@ -54,6 +58,25 @@ PlasmoidItem {
         PlasmaDBus.SessionBus.asyncCall(msg, (reply) => {
             if (!reply.isError && reply.values && reply.values.length > 0) {
                 updateTelemetry(reply.values[0]);
+            }
+        }, () => {});
+    }
+
+    function refreshEnergy() {
+        const msg = new PlasmaDBus.dbusMessage({
+            service: "com.evox2.powermode",
+            path: "/com/evox2/powermode",
+            iface: "com.evox2.powermode",
+            member: "GetEnergy",
+            arguments: []
+        });
+        PlasmaDBus.SessionBus.asyncCall(msg, (reply) => {
+            if (!reply.isError && reply.values && reply.values.length > 0) {
+                try {
+                    const e = JSON.parse(reply.values[0]);
+                    totalCost = e.total_cost ?? 0;
+                    trackingStarted = e.started ?? 0;
+                } catch (err) {}
             }
         }, () => {});
     }
@@ -161,12 +184,22 @@ PlasmoidItem {
         return "battery-profile-balanced-symbolic";
     }
 
+    function fmt(v, suffix, digits) {
+        if (v === null || v === undefined) return "N/A";
+        return Number(v).toFixed(digits === undefined ? 0 : digits) + (suffix || "");
+    }
+
+    readonly property int tempMax: 100
+    readonly property real powerMax: 150  // EVO-X2 max socket power
+    readonly property real loadMax: 16    // 16 cores
+
     Plasmoid.icon: root.iconForMode(currentMode)
 
     Component.onCompleted: {
         root.logDebug("applet loaded, initial refresh")
         refresh()
         refreshTelemetry()
+        refreshEnergy()
     }
 
     Timer {
@@ -177,6 +210,13 @@ PlasmoidItem {
             root.refresh()
             root.refreshTelemetry()
         }
+    }
+
+    Timer {
+        interval: 10000
+        repeat: true
+        running: true
+        onTriggered: root.refreshEnergy()
     }
 
     // Idle-revert check: runs every 60 s
@@ -203,34 +243,169 @@ PlasmoidItem {
         }
     }
 
-    // Row layout: icon + telemetry text
-    Row {
-        anchors.centerIn: parent
-        spacing: 4
-        anchors.left: parent.left
-        anchors.right: parent.right
+    // ---- compact representation: just the mode icon ---------------------
+    compactRepresentation: Kirigami.Icon {
+        width: 24
+        height: 24
+        source: root.iconForMode(currentMode)
 
-        Kirigami.Icon {
-            width: 20
-            height: 20
-            anchors.verticalCenter: parent.verticalCenter
-            source: root.iconForMode(currentMode)
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.expanded = !root.expanded
+        }
+    }
+
+    // ---- full representation: ring gauges + stats ----------------------
+    fullRepresentation: ColumnLayout {
+        id: column
+        spacing: 4
+
+        // title top-left; configure + pin actions top-right (matches knvtop)
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 2
+
+            Text {
+                text: "Strix Halo"
+                color: Kirigami.Theme.textColor
+                font.bold: true
+                font.pointSize: 10
+            }
+
+            Item { Layout.fillWidth: true }
+
+            PlasmaComponents.ToolButton {
+                icon.name: "configure"
+                onClicked: Plasmoid.internalAction("configure").trigger()
+                PlasmaComponents.ToolTip { text: i18n("Configure…") }
+            }
+
+            PlasmaComponents.ToolButton {
+                checkable: true
+                icon.name: "window-pin"
+                onCheckedChanged: root.hideOnWindowDeactivate = !checked
+                PlasmaComponents.ToolTip { text: i18n("Keep open") }
+            }
         }
 
-        Label {
-            anchors.verticalCenter: parent.verticalCenter
-            elide: Text.ElideRight
-            font.pointSize: 9
-            text: {
-                let parts = [];
-                if (root.powerW > 0) parts.push(root.powerW.toFixed(0) + "W");
-                if (root.tempC > 0) parts.push(root.tempC.toFixed(0) + "°");
-                return parts.length ? parts.join(" ") : currentMode;
+        // 4 ring gauges: POWER TEMP FAN LOAD
+        RowLayout {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: 4
+
+            // Power ring
+            Item {
+                Layout.preferredWidth: 68; Layout.preferredHeight: 68
+                Ring {
+                    anchors.fill: parent
+                    ratio: Math.min(1, root.powerW / root.powerMax)
+                    ringColor: "#3ddc84"
+                    valueText: root.fmt(root.powerW, "W")
+                    label: "POWER"
+                }
+            }
+
+            // Temp ring
+            Item {
+                Layout.preferredWidth: 68; Layout.preferredHeight: 68
+                Ring {
+                    anchors.fill: parent
+                    ratio: Math.min(1, root.tempC / root.tempMax)
+                    ringColor: "#b07fe8"
+                    valueText: root.fmt(root.tempC, "°")
+                    label: "TEMP"
+                }
+            }
+
+            // Fan ring (show fan1 as primary)
+            Item {
+                Layout.preferredWidth: 68; Layout.preferredHeight: 68
+                Ring {
+                    anchors.fill: parent
+                    ratio: Math.min(1, root.fan1Rpm / 4000)
+                    ringColor: "#e8c33a"
+                    valueText: root.fan1Rpm > 0 ? root.fmt(root.fan1Rpm, "") : "—"
+                    label: "FAN"
+                }
+            }
+
+            // Load ring
+            Item {
+                Layout.preferredWidth: 68; Layout.preferredHeight: 68
+                Ring {
+                    anchors.fill: parent
+                    ratio: Math.min(1, root.load1 / root.loadMax)
+                    ringColor: "#ff8c42"
+                    valueText: root.fmt(root.load1, "", 1)
+                    label: "LOAD"
+                }
+            }
+        }
+
+        // stats chips below rings
+        Row {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: 8
+
+            Text {
+                textFormat: Text.StyledText
+                text: i18n("fan <b>%1 / %2 / %3</b>",
+                    root.fan1Rpm > 0 ? root.fan1Rpm : "—",
+                    root.fan2Rpm > 0 ? root.fan2Rpm : "—",
+                    root.fan3Rpm > 0 ? root.fan3Rpm : "—")
+                color: Kirigami.Theme.textColor; font.pointSize: 7
+            }
+
+            Text {
+                textFormat: Text.StyledText
+                text: i18n("cost <b>$%1</b>", root.totalCost.toFixed(4))
+                color: Kirigami.Theme.textColor; font.pointSize: 7
+            }
+        }
+
+        // energy tracking info
+        Text {
+            Layout.alignment: Qt.AlignHCenter
+            text: trackingStarted > 0
+                ? i18n("since %1", new Date(trackingStarted * 1000).toLocaleDateString())
+                : ""
+            color: Kirigami.Theme.textColor
+            opacity: 0.6
+            font.pointSize: 7
+        }
+
+        // mode buttons
+        RowLayout {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 2
+            spacing: 4
+
+            PlasmaComponents.Button {
+                text: i18n("Quiet")
+                icon.name: "battery-profile-powersave-symbolic"
+                checked: currentMode === "quiet"
+                onClicked: root.setMode("quiet")
+                font.pointSize: 8
+            }
+            PlasmaComponents.Button {
+                text: i18n("Balanced")
+                icon.name: "battery-profile-balanced-symbolic"
+                checked: currentMode === "balanced"
+                onClicked: root.setMode("balanced")
+                font.pointSize: 8
+            }
+            PlasmaComponents.Button {
+                text: i18n("Performance")
+                icon.name: "battery-profile-performance-symbolic"
+                checked: currentMode === "performance"
+                onClicked: root.setMode("performance")
+                font.pointSize: 8
             }
         }
     }
 
-    // Custom hover tooltip showing full telemetry
+    // ---- hover tooltip: compact view with bars ---------------------------
     toolTipItem: ToolTipView {
         mode: root.currentMode
         powerW: root.powerW

@@ -53,8 +53,34 @@
 | 7 | RGB LED control (select + off) | `driver/` + `service/` + `applet/` | varies | EC register map | ⛔ blocked |
 | 8 | Scheduled LED off-hours (night) | `service/` + `applet/` | ~1 day | #7 | ⛔ blocked |
 
-Items 1–6 are complete (v1.2.0). Items 7–8 (RGB control and scheduled
+Items 1–6 are complete (v1.3.0). Items 7–8 (RGB control and scheduled
 off-hours) are blocked on finding the EC register map for the LED modes.
+
+**2026-10-01 learnings (v1.3.0):**
+
+- **Plasma 6.6 popup sizing**: `fullRepresentation` should be a direct layout
+  (e.g. `ColumnLayout`) rather than an `Item` wrapper. Wrapping in `Item` with
+  `Layout.preferredWidth/Height` forces a fixed minimum size that leaves large
+  empty areas. A bare layout lets Plasma size the popup to actual content.
+- **Pin/keep-open button**: Use `checkable: true` on the `PlasmaComponents.ToolButton`
+  with `icon.name: "window-pin"` and `onCheckedChanged: root.hideOnWindowDeactivate = !checked`.
+  This is the standard Plasma 6 pattern (same as knvtop). Do NOT toggle `root.expanded`
+  for the pin — that's for open/close. `hideOnWindowDeactivate` is a built-in
+  `PlasmoidItem` property that keeps the popup open when clicking away.
+- **`compact` property does not exist** on `PlasmaComponents.Button` in Plasma 6 —
+  omit it, it causes a runtime error. Use `font.pointSize` to control button size.
+- **Energy tracking crash**: `_save_energy` is a module-level function, NOT a method
+  on `PowerModeService`. Calling it as `self._save_energy` or `svc._save_energy` in
+  the periodic save lambda raises `AttributeError` and kills the save loop. Always
+  call it as `_save_energy(...)`.
+- **Ring gauge component**: A reusable `Ring.qml` canvas-drawn gauge works well.
+  Key gotcha: `Canvas.onPaint` does not re-run when properties change — you must
+  call `canvas.requestPaint()` on every property change (ratio, valueText, etc.).
+- **Hover tooltip**: `toolTipItem` works for compact tooltips with bars. Keep labels
+  spelled out (POWER, TEMP, FAN, LOAD) for readability, not abbreviated (PWR, TMP, LDA).
+- **Icon names for mode buttons**: `battery-profile-powersave-symbolic` (quiet),
+  `battery-profile-balanced-symbolic` (balanced), `battery-profile-performance-symbolic`
+  (performance) — these match the system icons and render correctly.
 
 **Development workflow (verified 2026-10-01):** After making changes to the
 service, bridge, or applet:

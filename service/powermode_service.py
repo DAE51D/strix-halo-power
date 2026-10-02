@@ -28,7 +28,7 @@ from gi.repository import GLib, Gio, GObject
 BUS_NAME = "com.evox2.powermode.backend"
 OBJECT_PATH = "/com/evox2/powermode"
 INTERFACE = "com.evox2.powermode"
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 MODES = ("quiet", "balanced", "performance")
 CYCLE_ORDER = {"quiet": "balanced", "balanced": "performance", "performance": "quiet"}
 SYSFS_PATH = "/sys/class/ec_su_axb35/apu/power_mode"
@@ -475,7 +475,7 @@ class PowerModeService:
                 "last_updated": time.time(),
                 "started": time.time(),
             }
-            self._save_energy(0.0, self._energy["last_updated"])
+            _save_energy(0.0, self._energy["last_updated"])
             invocation.return_value(None)
         elif method == "GetRate":
             invocation.return_value(GLib.Variant("(d)", (self._rate,)))
@@ -609,7 +609,7 @@ def main():
     GLib.timeout_add(
         60000,
         lambda: (
-            svc._save_energy(
+            _save_energy(
                 svc._energy["total_wh"],
                 svc._energy["last_updated"],
                 svc._energy.get("started"),
