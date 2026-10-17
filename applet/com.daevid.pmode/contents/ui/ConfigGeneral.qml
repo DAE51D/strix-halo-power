@@ -160,7 +160,7 @@ KCM.SimpleKCM {
         }
 
         Label {
-            text: i18n("Lifetime cost: $%1 (%2 kWh)", root.totalCost.toFixed(2), (root.totalWh / 1000.0).toFixed(2))
+            text: i18n("Lifetime cost: $%1 (%2 kWh)", root.totalCost.toFixed(4), (root.totalWh / 1000.0).toFixed(3))
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }

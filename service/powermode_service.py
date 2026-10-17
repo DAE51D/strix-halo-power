@@ -604,20 +604,23 @@ def main():
             return 0
         raise
 
-    GLib.timeout_add(POLL_INTERVAL_MS, svc._poll)
-    GLib.timeout_add(TELEMETRY_POLL_MS, svc._poll_telemetry)
-    GLib.timeout_add(
-        60000,
-        lambda: (
+    def _save_energy_if_dirty():
+        # Must always return True (GLib.SOURCE_CONTINUE) — a falsy return
+        # (e.g. _save_energy's implicit None) deregisters the timeout, which
+        # silently stopped all persistence after the first save and made
+        # every service restart roll total_wh back to that one snapshot.
+        if svc._energy_dirty:
             _save_energy(
                 svc._energy["total_wh"],
                 svc._energy["last_updated"],
                 svc._energy.get("started"),
             )
-            if svc._energy_dirty
-            else True
-        ),
-    )
+            svc._energy_dirty = False
+        return True
+
+    GLib.timeout_add(POLL_INTERVAL_MS, svc._poll)
+    GLib.timeout_add(TELEMETRY_POLL_MS, svc._poll_telemetry)
+    GLib.timeout_add(60000, _save_energy_if_dirty)
     loop = GLib.MainLoop()
     loop.run()
     return 0
