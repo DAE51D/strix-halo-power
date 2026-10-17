@@ -113,18 +113,25 @@ Item {
                 var line1 = chart.formatHour(p.hour)
                 var line2 = Math.round(p.w) + "W  $" + cost.toFixed(4)
 
-                ctx.font = "7px sans-serif"
-                var boxW = Math.max(ctx.measureText(line1).width, ctx.measureText(line2).width) + 8
-                var boxH = 20
+                var pad = 6, lineH = 13
+                ctx.font = "9px sans-serif"
+                var w1 = ctx.measureText(line1).width
+                ctx.font = "bold 11px sans-serif"
+                var w2 = ctx.measureText(line2).width
+                var boxW = Math.max(w1, w2) + pad * 2
+                var boxH = lineH * 2 + pad
+
                 var boxX = Math.min(Math.max(hx - boxW / 2, padL), padL + w - boxW)
                 var boxY = hy > padT + h / 2 ? padT : padT + 2
 
-                ctx.fillStyle = Qt.rgba(0, 0, 0, 0.72)
+                ctx.fillStyle = Qt.rgba(0, 0, 0, 0.82)
                 ctx.fillRect(boxX, boxY, boxW, boxH)
                 ctx.fillStyle = "#ffffff"
                 ctx.textAlign = "left"; ctx.textBaseline = "top"
-                ctx.fillText(line1, boxX + 4, boxY + 2)
-                ctx.fillText(line2, boxX + 4, boxY + 11)
+                ctx.font = "9px sans-serif"
+                ctx.fillText(line1, boxX + pad, boxY + pad / 2)
+                ctx.font = "bold 11px sans-serif"
+                ctx.fillText(line2, boxX + pad, boxY + pad / 2 + lineH)
             }
         }
     }
