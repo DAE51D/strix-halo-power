@@ -60,6 +60,7 @@ public slots:
     QString GetTelemetry() { return callBackend("GetTelemetry", {}).toString(); }
     QString GetEnergy() { return callBackend("GetEnergy", {}).toString(); }
     void ResetEnergy() { callBackendAsync("ResetEnergy", {}); }
+    QString GetEnergyHistory() { return callBackend("GetEnergyHistory", {}).toString(); }
     double GetRate() { return callBackend("GetRate", {}).toDouble(); }
     void SetRate(const QString &rate) { callBackendAsync("SetRate", {rate}); }
     void SetMode(const QString &mode) { callBackendAsync("SetMode", {mode}); }
