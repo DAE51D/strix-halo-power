@@ -70,6 +70,9 @@ INTROSPECTION_XML = """
     </method>
     <method name="ResetEnergy">
     </method>
+    <method name="GetEnergyHistory">
+      <arg name="history" type="s" direction="out"/>
+    </method>
     <method name="GetRate">
       <arg name="rate" type="d" direction="out"/>
     </method>
@@ -189,7 +192,10 @@ def _telemetry(mode=None):
 ENERGY_DIR = os.path.expanduser("~/.local/share/evox2-power")
 ENERGY_FILE = os.path.join(ENERGY_DIR, "energy.json")
 RATE_FILE = os.path.join(ENERGY_DIR, "rate.json")
+HISTORY_FILE = os.path.join(ENERGY_DIR, "history.json")
 DEFAULT_RATE = 0.13  # $/kWh
+HISTORY_RETENTION_DAYS = 30
+HISTORY_RETENTION_SECONDS = HISTORY_RETENTION_DAYS * 86400
 
 
 def _ensure_energy_dir():
@@ -247,6 +253,30 @@ def _save_rate(rate):
         log.warning("failed to save rate: %s", e)
 
 
+def _load_history():
+    """Load persisted hourly energy-history buckets, trimmed to the
+    retention window. Each bucket is {"hour": <epoch at hour start>, "wh":
+    <Wh accumulated in that hour>} — since a bucket spans exactly one hour,
+    "wh" also equals the average power draw in W over that hour."""
+    try:
+        with open(HISTORY_FILE, "r") as f:
+            buckets = json.load(f).get("buckets", [])
+    except (OSError, ValueError, AttributeError):
+        return []
+    cutoff = time.time() - HISTORY_RETENTION_SECONDS
+    return [b for b in buckets if isinstance(b, dict) and b.get("hour", 0) >= cutoff]
+
+
+def _save_history(buckets):
+    """Persist hourly energy-history buckets to disk."""
+    _ensure_energy_dir()
+    try:
+        with open(HISTORY_FILE, "w") as f:
+            json.dump({"buckets": buckets}, f)
+    except OSError as e:
+        log.warning("failed to save energy history: %s", e)
+
+
 def _write_sysfs(mode):
     """Write the mode to sysfs, falling back to a sudo helper if the file is
     not group-writable (see README: the udev rule cannot set sysfs attribute
@@ -280,6 +310,12 @@ class PowerModeService:
         self._energy = _load_energy()
         self._energy_dirty = False
         self._rate = _load_rate()
+
+        # Rolling hourly history (independent of the lifetime total above —
+        # not affected by ResetEnergy, ages out on its own after
+        # HISTORY_RETENTION_DAYS)
+        self._history = _load_history()
+        self._history_dirty = False
 
         node = Gio.DBusNodeInfo.new_for_xml(INTROSPECTION_XML)
         self._iface_info = node.lookup_interface(INTERFACE)
@@ -344,6 +380,18 @@ class PowerModeService:
         self._energy["total_wh"] += dwh
         self._energy["last_updated"] = now
         self._energy_dirty = True
+
+        # Roll into the current hourly bucket (floor to the hour). A sample
+        # that straddles an hour boundary is attributed entirely to the new
+        # hour — at ~1 Hz polling the misattributed slice is sub-second
+        # worth of energy, not worth splitting.
+        hour_start = int(now // 3600) * 3600
+        if not self._history or self._history[-1]["hour"] != hour_start:
+            self._history.append({"hour": hour_start, "wh": 0.0})
+            cutoff = now - HISTORY_RETENTION_SECONDS
+            self._history = [b for b in self._history if b["hour"] >= cutoff]
+        self._history[-1]["wh"] += dwh
+        self._history_dirty = True
 
     def _poll_telemetry(self):
         """Poll power/temp/fans/load every ~1 s and emit TelemetryUpdated on
@@ -477,6 +525,9 @@ class PowerModeService:
             }
             _save_energy(0.0, self._energy["last_updated"])
             invocation.return_value(None)
+        elif method == "GetEnergyHistory":
+            payload = json.dumps(self._history)
+            invocation.return_value(GLib.Variant("(s)", (payload,)))
         elif method == "GetRate":
             invocation.return_value(GLib.Variant("(d)", (self._rate,)))
         elif method == "SetRate":
@@ -604,7 +655,7 @@ def main():
             return 0
         raise
 
-    def _save_energy_if_dirty():
+    def _periodic_save():
         # Must always return True (GLib.SOURCE_CONTINUE) — a falsy return
         # (e.g. _save_energy's implicit None) deregisters the timeout, which
         # silently stopped all persistence after the first save and made
@@ -616,11 +667,14 @@ def main():
                 svc._energy.get("started"),
             )
             svc._energy_dirty = False
+        if svc._history_dirty:
+            _save_history(svc._history)
+            svc._history_dirty = False
         return True
 
     GLib.timeout_add(POLL_INTERVAL_MS, svc._poll)
     GLib.timeout_add(TELEMETRY_POLL_MS, svc._poll_telemetry)
-    GLib.timeout_add(60000, _save_energy_if_dirty)
+    GLib.timeout_add(60000, _periodic_save)
     loop = GLib.MainLoop()
     loop.run()
     return 0

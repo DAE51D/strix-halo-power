@@ -33,6 +33,40 @@ PlasmoidItem {
     property real totalCost: 0
     property real trackingStarted: 0
 
+    // Rolling power history (populated by GetEnergyHistory call) — fixed-
+    // length array of avg-W-per-hour, oldest first, missing hours as 0
+    readonly property int historyWindowHours: 168  // 7 days
+    property var historyPoints: []
+
+    function alignHistory(buckets) {
+        const byHour = {};
+        for (const b of buckets) byHour[b.hour] = b.wh;
+        const nowHour = Math.floor(Date.now() / 1000 / 3600) * 3600;
+        const out = [];
+        for (let i = historyWindowHours - 1; i >= 0; i--) {
+            const h = nowHour - i * 3600;
+            out.push(byHour[h] !== undefined ? byHour[h] : 0);
+        }
+        return out;
+    }
+
+    function refreshHistory() {
+        const msg = new PlasmaDBus.dbusMessage({
+            service: "com.evox2.powermode",
+            path: "/com/evox2/powermode",
+            iface: "com.evox2.powermode",
+            member: "GetEnergyHistory",
+            arguments: []
+        });
+        PlasmaDBus.SessionBus.asyncCall(msg, (reply) => {
+            if (!reply.isError && reply.values && reply.values.length > 0) {
+                try {
+                    historyPoints = root.alignHistory(JSON.parse(reply.values[0]));
+                } catch (err) {}
+            }
+        }, () => {});
+    }
+
     function updateTelemetry(jsonStr) {
         try {
             const t = JSON.parse(jsonStr);
@@ -200,6 +234,7 @@ PlasmoidItem {
         refresh()
         refreshTelemetry()
         refreshEnergy()
+        refreshHistory()
     }
 
     Timer {
@@ -217,6 +252,13 @@ PlasmoidItem {
         repeat: true
         running: true
         onTriggered: root.refreshEnergy()
+    }
+
+    Timer {
+        interval: 60000
+        repeat: true
+        running: true
+        onTriggered: root.refreshHistory()
     }
 
     // Idle-revert check: runs every 60 s
@@ -373,6 +415,28 @@ PlasmoidItem {
             color: Kirigami.Theme.textColor
             opacity: 0.6
             font.pointSize: 7
+        }
+
+        // rolling power-history line chart (last 7 days, hourly)
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.topMargin: 4
+            spacing: 2
+
+            Text {
+                Layout.alignment: Qt.AlignHCenter
+                text: i18n("Power — last 7 days")
+                color: Kirigami.Theme.textColor
+                opacity: 0.6
+                font.pointSize: 7
+            }
+
+            HistoryChart {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 64
+                points: root.historyPoints
+                lineColor: "#3ddc84"
+            }
         }
 
         // mode buttons
