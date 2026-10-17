@@ -73,6 +73,8 @@ INTROSPECTION_XML = """
     <method name="GetEnergyHistory">
       <arg name="history" type="s" direction="out"/>
     </method>
+    <method name="ResetHistory">
+    </method>
     <method name="GetRate">
       <arg name="rate" type="d" direction="out"/>
     </method>
@@ -528,6 +530,11 @@ class PowerModeService:
         elif method == "GetEnergyHistory":
             payload = json.dumps(self._history)
             invocation.return_value(GLib.Variant("(s)", (payload,)))
+        elif method == "ResetHistory":
+            self._history = []
+            self._history_dirty = False
+            _save_history(self._history)
+            invocation.return_value(None)
         elif method == "GetRate":
             invocation.return_value(GLib.Variant("(d)", (self._rate,)))
         elif method == "SetRate":

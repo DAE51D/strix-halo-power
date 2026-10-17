@@ -68,6 +68,17 @@ KCM.SimpleKCM {
         }, () => {});
     }
 
+    function resetHistory() {
+        const msg = new PlasmaDBus.dbusMessage({
+            service: "com.evox2.powermode",
+            path: "/com/evox2/powermode",
+            iface: "com.evox2.powermode",
+            member: "ResetHistory",
+            arguments: []
+        });
+        PlasmaDBus.SessionBus.asyncCall(msg, () => {}, () => {});
+    }
+
     Component.onCompleted: {
         refreshLoad();
         refreshEnergy();
@@ -203,13 +214,23 @@ KCM.SimpleKCM {
             }
         }
 
-        Button {
-            text: i18n("Reset cost counter")
-            onClicked: root.resetEnergy()
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Button {
+                text: i18n("Reset cost counter")
+                onClicked: root.resetEnergy()
+            }
+
+            Button {
+                text: i18n("Reset history graph")
+                onClicked: root.resetHistory()
+            }
         }
 
         Label {
-            text: i18n("Tracks total energy consumption since first use. Rate is applied to calculate cost. Reset clears the lifetime total.")
+            text: i18n("Tracks total energy consumption since first use. Rate is applied to calculate cost. \"Reset cost counter\" clears the lifetime total; \"Reset history graph\" separately clears the 7-day chart (it otherwise ages out hourly data on its own after 30 days).")
             wrapMode: Text.WordWrap
             opacity: 0.7
             Layout.fillWidth: true
