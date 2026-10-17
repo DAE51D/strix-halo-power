@@ -454,7 +454,7 @@ PlasmoidItem {
 
             HistoryChart {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 64
+                Layout.preferredHeight: 100
                 points: root.historyPoints
                 rate: root.rate
                 lineColor: "#3ddc84"
