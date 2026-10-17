@@ -116,12 +116,15 @@ The check runs every 60 s. Any load spike resets the idle counter. If you're
 already in `quiet` mode the feature is a no-op.
 
 **Telemetry & energy cost** — the full (expanded) popup shows four ring
-gauges (power draw, APU temp, fan RPM, 1-minute load) and running energy
-stats below them: total kWh and cost since tracking started, at a
-configurable `$/kWh` rate (right-click → **Configure** → **General**,
-default `0.13`; *Reset* clears the accumulator). A pin button
-(top-right, 📌) keeps the popup open instead of closing on focus loss.
-Toggle the gauges off entirely with *Show telemetry* in the same
+gauges (power draw, APU temp, fan RPM, 1-minute load), running energy
+stats (total kWh and cost since tracking started, at a configurable
+`$/kWh` rate — right-click → **Configure** → **General**, default `0.13`;
+*Reset* clears the accumulator), and a rolling 7-day hourly power line
+chart below that. The chart is independent of the cumulative total/cost —
+it's not affected by *Reset* and ages out on its own (hours older than
+30 days are dropped; the UI shows the most recent 7 of those). A pin
+button (top-right, 📌) keeps the popup open instead of closing on focus
+loss. Toggle the gauges off entirely with *Show telemetry* in the same
 config page if you just want the plain mode switcher.
 
 **CLI (D-Bus):**
@@ -186,6 +189,7 @@ Bus `com.evox2.powermode`, object `/com/evox2/powermode`, interface
 | `GetTelemetry()`                                        | method → s   | JSON snapshot: `power_w`, `temp_c`, `fan1/2/3_rpm`, `load1`, `mode` |
 | `GetEnergy()`                                           | method → s   | JSON: `total_wh`, `total_cost`, `started` (epoch)       |
 | `ResetEnergy()`                                         | method        | Zero the energy/cost accumulator, reset `started`       |
+| `GetEnergyHistory()`                                    | method → s   | JSON array of hourly buckets `{hour, wh}`, last 30 days, independent of `ResetEnergy` |
 | `GetRate()` / `SetRate(rate)`                           | method → d / (s) | Read/set the `$/kWh` cost rate                      |
 | `Log(message)`                                          | method (s)    | Applet → service log passthrough (for `journalctl` debugging) |
 | `ModeChanged(newMode, source)`                          | signal (s, s) | Any change (applet / button / CLI)                     |
