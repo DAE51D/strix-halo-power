@@ -33,16 +33,17 @@ the `.plasmoid` leaves the widget showing a disconnected/no-op state.
       distribution point without a manual build step each time
 - [x] Draft store listing copy (title, tagline, longer description, tags/
       category) — see `STORE_LISTING.md`
-- [ ] Test-build the plasmoid locally (`./scripts/build-plasmoid.sh`) and
+- [x] Test-build the plasmoid locally (`./scripts/build-plasmoid.sh`) and
       test-install it via `kpackagetool6 -t Plasma/Applet -u
       pmode-<version>.plasmoid` to confirm the zip is structured correctly —
       do this before ever pushing a tag or submitting to the store
-- [ ] Push a `v<version>` tag to trigger the release workflow and confirm the
+- [x] Push a `v<version>` tag to trigger the release workflow and confirm the
       GitHub Release + attached `.plasmoid` come out right — **this is a
       real, publicly visible action (creates a tag + a GitHub Release), so
       it's left for you to trigger deliberately** rather than done
       automatically: `git tag v<version> && git push origin v<version>`
-      (e.g. `git tag v1.2.0 && git push origin v1.2.0` for the current release)
+      (confirmed working for v1.0.0 and v1.2.0 — see
+      [Releases](https://github.com/DAE51D/strix-halo-power/releases))
 
 ## Needs your KDE Identity login (can't be done from here)
 
