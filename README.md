@@ -83,18 +83,16 @@ right-click picks one directly. The icon reflects the current mode.
 > --upgrade`) doesn't seem to take effect, restart plasmashell — no logout/login
 > needed:
 > ```bash
-> kquitapp6 plasmashell
-> sleep 1
-> nohup plasmashell > /tmp/plasmashell.log 2>&1 &
-> disown
+> systemctl --user restart plasma-plasmashell.service
 > ```
-> A bare `plasmashell &` can get killed when the invoking shell/subshell
-> exits — `nohup` + `disown` together are what make it survive and actually
-> stick. (`kstart6` doesn't exist on Kubuntu 26.04 — only `kstart`/`kstart5`,
-> neither of which is `kstart6` — so this is the reliable form.) After it
-> restarts, check the log for errors:
+> This is the correct way on Kubuntu 26.04/Plasma 6.6 — `kstart6` doesn't
+> exist (only `kstart`/`kstart5`, neither of which is `kstart6`), so a bare
+> `kquitapp6 plasmashell` followed by a manually-launched `plasmashell &`
+> leaves it running but orphaned from systemd (no longer supervised/
+> auto-restarted, and `systemctl --user status` reports it as dead even
+> though a process is up). After it restarts, check for errors:
 > ```bash
-> grep -iE "error|Cannot|TypeError|ReferenceError" /tmp/plasmashell.log
+> journalctl --user -u plasma-plasmashell.service -n 50 | grep -iE "error|Cannot|TypeError|ReferenceError"
 > ```
 
 ## Using it
@@ -180,7 +178,7 @@ Bus `com.evox2.powermode`, object `/com/evox2/powermode`, interface
 | --------------------------------------------------------- | ------------- | ------------------------------------------------------ |
 | `Mode`                                                  | property (s)  | Current mode                                           |
 | `Modes`                                                 | property (as) | `["quiet", "balanced", "performance"]`               |
-| `Version`                                               | property (s)  | Service version (currently 1.2.0)                    |
+| `Version`                                               | property (s)  | Service version (currently 1.2.1)                    |
 | `GetMode()`                                             | method → s   | Current mode                                           |
 | `SetMode(mode)`                                         | method (s)    | Validate + write sysfs + read back                     |
 | `SetQuiet()` / `SetBalanced()` / `SetPerformance()` | method        | No-arg setters (Plasma drops args — see TECHNICAL.md) |
@@ -235,6 +233,9 @@ service/
   99-ec-su_axb35.rules     udev rule
  install.sh                 one-shot installer
  pmode-bench.sh             benchmark the modes (CPU envelope + LLM throughput)
+ scripts/
+   build-plasmoid.sh        packages applet/com.daevid.pmode/ (git archive of HEAD) into pmode-<version>.plasmoid
+   deploy-dev.sh            rsyncs the applet to the live install + stamps a dev build timestamp (see pmode.prompt.md)
  README.md                  this file
  BENCHMARKS.md              benchmark method + measured results
  TECHNICAL.md               architecture + the Plasma 6.6 D-Bus limitation + bridge rationale

@@ -53,8 +53,10 @@
 | 7 | RGB LED control (select + off) | `driver/` + `service/` + `applet/` | varies | EC register map | ⛔ blocked |
 | 8 | Scheduled LED off-hours (night) | `service/` + `applet/` | ~1 day | #7 | ⛔ blocked |
 
-Items 1–6 are complete (v1.2.0). Items 7–8 (RGB control and scheduled
-off-hours) are blocked on finding the EC register map for the LED modes.
+Items 1–6 are complete (v1.2.0; v1.2.1 adds a rolling 7-day hourly
+power-history chart on top of #6, see below). Items 7–8 (RGB control and
+scheduled off-hours) are blocked on finding the EC register map for the LED
+modes.
 
 **2026-10-01 learnings (v1.2.0):**
 
@@ -82,26 +84,80 @@ off-hours) are blocked on finding the EC register map for the LED modes.
   `battery-profile-balanced-symbolic` (balanced), `battery-profile-performance-symbolic`
   (performance) — these match the system icons and render correctly.
 
-**Development workflow (verified 2026-10-01):** After making changes to the
-service, bridge, or applet:
+**2026-10-16 additions (v1.2.1):**
+
+- **`GLib.timeout_add` callback must always return a truthy value to keep
+  repeating.** The periodic energy-save timer called `_save_energy(...)`
+  (implicit `None` return) whenever the accumulator was dirty, and `True`
+  only in the non-dirty branch — so the very first dirty save deregistered
+  the timer and no further saves ever happened for that process's life.
+  Every restart then rolled the lifetime total back to that one early
+  snapshot. Always wrap conditional work in a named function that returns
+  `True` (`GLib.SOURCE_CONTINUE`) unconditionally at the end, never inline
+  the side-effecting call as the return expression itself.
+- **The C++ bridge forwards methods by hand-registered Qt slot, not generic
+  reflection.** Adding a new D-Bus method to the backend service
+  (`powermode_service.py`'s `INTROSPECTION_XML` + `_on_method_call`) is not
+  enough — `pmode-bridge.cpp`'s `Bridge` class needs a matching
+  `callBackend("MethodName", {})`-forwarding slot too, or calls routed
+  through `com.evox2.powermode` (the bridge's bus name, what the applet
+  actually calls) fail with an unknown-method error while the same call
+  against `com.evox2.powermode.backend` directly (bypassing the bridge)
+  succeeds — easy to mistake for a QML-side bug since the symptom is just
+  "the D-Bus call silently never returns data." Rebuild+redeploy the bridge
+  the same way `install.sh` does (see its step 5) after any such addition.
+- **Rolling hourly power history**: `GetEnergyHistory()` returns a JSON
+  array of `{hour, wh}` buckets (hour = epoch at hour start; `wh` doubles
+  as avg-W for that hour since a bucket spans exactly one hour), retained
+  30 days, persisted to `history.json` independent of `ResetEnergy`/the
+  lifetime total. The applet aligns it client-side into a fixed-length
+  168-point (7-day) array with missing hours filled as 0 W — the box being
+  off is a real 0 W, not a gap to interpolate — and renders it as a
+  hand-rolled Canvas line chart (`HistoryChart.qml`, same approach as
+  `Ring.qml`) with a hover crosshair + time/power/cost readout.
+
+**Development workflow (verified 2026-10-01, applet step updated 2026-10-16):**
+After making changes to the service, bridge, or applet:
 
 ```bash
 # 1. Install updated files
 cp service/powermode_service.py ~/.local/bin/powermode_service.py
 # (rebuild bridge if changed — see install.sh step 5)
-kpackagetool6 --type Plasma/Applet --remove com.daevid.pmode
-kpackagetool6 --type Plasma/Applet --install applet/com.daevid.pmode
+./scripts/deploy-dev.sh --restart   # applet: rsync + dev-stamp + reload plasmashell
 
-# 2. Restart services
+# 2. Restart the backend services (not covered by deploy-dev.sh)
 systemctl --user restart com.evox2.powermode pmode-bridge
-
-# 3. Reload Plasma shell (required for applet changes to take effect)
-systemctl --user restart plasma-plasmashell.service
 ```
 
 **Do NOT use** `kquitapp6 plasmashell && kstart6 plasmashell` — `kstart6` is not
-available on Kubuntu 26.04/Plasma 6.6 and the service name lookup fails. The
-systemd unit `plasma-plasmashell.service` is the correct way.
+available on Kubuntu 26.04/Plasma 6.6 and the service name lookup fails. Also
+avoid a bare `kquitapp6 plasmashell` followed by a manually-launched
+`plasmashell &`/`nohup` — it works but orphans the process from systemd (no
+longer supervised, `systemctl --user status` reports it dead while it's
+actually running). `systemctl --user restart plasma-plasmashell.service` (what
+`deploy-dev.sh --restart` runs) is the correct way, confirmed working
+2026-10-16 — this superseded an earlier README note that recommended the
+`kquitapp6`+`nohup` trick; fixed to match.
+
+**`scripts/deploy-dev.sh`** (added 2026-10-16, same pattern as the `knvtop`
+sibling project): rsyncs `applet/com.daevid.pmode/` to the live
+`~/.local/share/plasma/plasmoids/com.daevid.pmode/` and stamps **only the
+installed copy's** `metadata.json` `Version` as
+`<Version>+YYYYMMDD.HHMM.<git-short-sha>[-dirty]` — visible in Settings →
+About — so you can always tell which build is actually running on this box
+while a release is still baking. The source tree's `Version` stays clean
+(what `build-plasmoid.sh` packages for an actual release). `--restart`
+reloads plasmashell for you; omit it to stage the files and restart later
+(confirm with the user first — it reloads every widget on the panel).
+
+**Version-bump policy** (same as `knvtop`): `metadata.json`'s `KPlugin.Version`
+tracks what's actually been *released* (tagged on GitHub and/or uploaded to
+the KDE/opendesktop store), not the number of commits or work sessions.
+Don't bump per-commit or per-feature — everything that lands between two
+releases ships under the next number, bumped once, after the previous one is
+actually out. The source version stays clean for exactly that reason; the
+dev-stamp from `deploy-dev.sh` is what distinguishes work-in-progress builds
+day to day instead.
 
 ---
 
