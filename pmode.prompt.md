@@ -53,10 +53,10 @@
 | 7 | RGB LED control (select + off) | `driver/` + `service/` + `applet/` | varies | EC register map | ⛔ blocked |
 | 8 | Scheduled LED off-hours (night) | `service/` + `applet/` | ~1 day | #7 | ⛔ blocked |
 
-Items 1–6 are complete (v1.3.0). Items 7–8 (RGB control and scheduled
+Items 1–6 are complete (v1.2.0). Items 7–8 (RGB control and scheduled
 off-hours) are blocked on finding the EC register map for the LED modes.
 
-**2026-10-01 learnings (v1.3.0):**
+**2026-10-01 learnings (v1.2.0):**
 
 - **Plasma 6.6 popup sizing**: `fullRepresentation` should be a direct layout
   (e.g. `ColumnLayout`) rather than an `Item` wrapper. Wrapping in `Item` with

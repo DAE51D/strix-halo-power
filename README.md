@@ -115,6 +115,15 @@ right-click picks a mode directly.
 The check runs every 60 s. Any load spike resets the idle counter. If you're
 already in `quiet` mode the feature is a no-op.
 
+**Telemetry & energy cost** — the full (expanded) popup shows four ring
+gauges (power draw, APU temp, fan RPM, 1-minute load) and running energy
+stats below them: total kWh and cost since tracking started, at a
+configurable `$/kWh` rate (right-click → **Configure** → **General**,
+default `0.13`; *Reset* clears the accumulator). A pin button
+(top-right, 📌) keeps the popup open instead of closing on focus loss.
+Toggle the gauges off entirely with *Show telemetry* in the same
+config page if you just want the plain mode switcher.
+
 **CLI (D-Bus):**
 
 ```bash
@@ -168,12 +177,19 @@ Bus `com.evox2.powermode`, object `/com/evox2/powermode`, interface
 | --------------------------------------------------------- | ------------- | ------------------------------------------------------ |
 | `Mode`                                                  | property (s)  | Current mode                                           |
 | `Modes`                                                 | property (as) | `["quiet", "balanced", "performance"]`               |
-| `Version`                                               | property (s)  | Service version (currently 1.1.0)                    |
+| `Version`                                               | property (s)  | Service version (currently 1.2.0)                    |
 | `GetMode()`                                             | method → s   | Current mode                                           |
 | `SetMode(mode)`                                         | method (s)    | Validate + write sysfs + read back                     |
 | `SetQuiet()` / `SetBalanced()` / `SetPerformance()` | method        | No-arg setters (Plasma drops args — see TECHNICAL.md) |
 | `Cycle()`                                               | method → s   | Next mode in order                                     |
+| `GetLoadAverage()`                                      | method → d   | 1-minute load average (used by the idle-revert check)  |
+| `GetTelemetry()`                                        | method → s   | JSON snapshot: `power_w`, `temp_c`, `fan1/2/3_rpm`, `load1`, `mode` |
+| `GetEnergy()`                                           | method → s   | JSON: `total_wh`, `total_cost`, `started` (epoch)       |
+| `ResetEnergy()`                                         | method        | Zero the energy/cost accumulator, reset `started`       |
+| `GetRate()` / `SetRate(rate)`                           | method → d / (s) | Read/set the `$/kWh` cost rate                      |
+| `Log(message)`                                          | method (s)    | Applet → service log passthrough (for `journalctl` debugging) |
 | `ModeChanged(newMode, source)`                          | signal (s, s) | Any change (applet / button / CLI)                     |
+| `TelemetryUpdated(telemetry)`                           | signal (s)    | Emitted (debounced) when power/temp/fan/load shifts meaningfully |
 
 **Write path:** tries a direct sysfs write; on `PermissionError` falls back to
 `sudo -n /usr/local/bin/pmode-write <mode>`. After writing it reads back (up to

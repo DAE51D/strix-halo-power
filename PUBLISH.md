@@ -35,13 +35,14 @@ the `.plasmoid` leaves the widget showing a disconnected/no-op state.
       category) — see `STORE_LISTING.md`
 - [ ] Test-build the plasmoid locally (`./scripts/build-plasmoid.sh`) and
       test-install it via `kpackagetool6 -t Plasma/Applet -u
-      pmode-1.0.0.plasmoid` to confirm the zip is structured correctly —
+      pmode-<version>.plasmoid` to confirm the zip is structured correctly —
       do this before ever pushing a tag or submitting to the store
-- [ ] Push a `v1.0.0` tag to trigger the release workflow and confirm the
+- [ ] Push a `v<version>` tag to trigger the release workflow and confirm the
       GitHub Release + attached `.plasmoid` come out right — **this is a
       real, publicly visible action (creates a tag + a GitHub Release), so
       it's left for you to trigger deliberately** rather than done
-      automatically: `git tag v1.0.0 && git push origin v1.0.0`
+      automatically: `git tag v<version> && git push origin v<version>`
+      (e.g. `git tag v1.2.0 && git push origin v1.2.0` for the current release)
 
 ## Needs your KDE Identity login (can't be done from here)
 
