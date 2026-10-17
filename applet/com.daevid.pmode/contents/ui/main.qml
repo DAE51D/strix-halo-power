@@ -34,9 +34,11 @@ PlasmoidItem {
     property real trackingStarted: 0
 
     // Rolling power history (populated by GetEnergyHistory call) — fixed-
-    // length array of avg-W-per-hour, oldest first, missing hours as 0
+    // length array of {hour, w} (avg W for that hour), oldest first,
+    // missing hours filled in as 0 W
     readonly property int historyWindowHours: 168  // 7 days
     property var historyPoints: []
+    property real rate: 0.13  // $/kWh, mirrors the backend's GetRate
 
     function alignHistory(buckets) {
         const byHour = {};
@@ -45,7 +47,7 @@ PlasmoidItem {
         const out = [];
         for (let i = historyWindowHours - 1; i >= 0; i--) {
             const h = nowHour - i * 3600;
-            out.push(byHour[h] !== undefined ? byHour[h] : 0);
+            out.push({ hour: h, w: byHour[h] !== undefined ? byHour[h] : 0 });
         }
         return out;
     }
@@ -63,6 +65,21 @@ PlasmoidItem {
                 try {
                     historyPoints = root.alignHistory(JSON.parse(reply.values[0]));
                 } catch (err) {}
+            }
+        }, () => {});
+    }
+
+    function refreshRate() {
+        const msg = new PlasmaDBus.dbusMessage({
+            service: "com.evox2.powermode",
+            path: "/com/evox2/powermode",
+            iface: "com.evox2.powermode",
+            member: "GetRate",
+            arguments: []
+        });
+        PlasmaDBus.SessionBus.asyncCall(msg, (reply) => {
+            if (!reply.isError && reply.values && reply.values.length > 0) {
+                rate = Number(reply.values[0]);
             }
         }, () => {});
     }
@@ -235,6 +252,7 @@ PlasmoidItem {
         refreshTelemetry()
         refreshEnergy()
         refreshHistory()
+        refreshRate()
     }
 
     Timer {
@@ -258,7 +276,10 @@ PlasmoidItem {
         interval: 60000
         repeat: true
         running: true
-        onTriggered: root.refreshHistory()
+        onTriggered: {
+            root.refreshHistory()
+            root.refreshRate()
+        }
     }
 
     // Idle-revert check: runs every 60 s
@@ -435,6 +456,7 @@ PlasmoidItem {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 64
                 points: root.historyPoints
+                rate: root.rate
                 lineColor: "#3ddc84"
             }
         }
