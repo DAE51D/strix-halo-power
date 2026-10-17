@@ -17,5 +17,12 @@
         <entry name="energyRatePerKwh" type="Double">
             <default>0.13</default>
         </entry>
+        <!-- Not user-facing: bumped by ConfigGeneral.qml's "Reset history
+             graph" button so the already-open popup (a separate QML
+             context) notices and refreshes immediately, instead of waiting
+             for its own periodic history-refresh timer. -->
+        <entry name="historyResetNonce" type="Int">
+            <default>0</default>
+        </entry>
     </group>
 </kcfg>

@@ -76,7 +76,12 @@ KCM.SimpleKCM {
             member: "ResetHistory",
             arguments: []
         });
-        PlasmaDBus.SessionBus.asyncCall(msg, () => {}, () => {});
+        PlasmaDBus.SessionBus.asyncCall(msg, () => {
+            // The popup is a separate QML context and won't see this reset
+            // until its own periodic timer fires — bump a shared config
+            // value so it notices and refreshes right away.
+            Plasmoid.configuration.historyResetNonce = (Plasmoid.configuration.historyResetNonce ?? 0) + 1;
+        }, () => {});
     }
 
     Component.onCompleted: {

@@ -137,6 +137,12 @@ PlasmoidItem {
     readonly property real idleLoadThreshold: Plasmoid.configuration.idleLoadThreshold ?? 0.5
     property int idleSeconds: 0  // seconds the system has been continuously idle
 
+    // Bumped by ConfigGeneral.qml's "Reset history graph" button (a separate
+    // QML context) so this popup refreshes immediately instead of waiting
+    // for its own 60s history timer.
+    readonly property int historyResetNonce: Plasmoid.configuration.historyResetNonce ?? 0
+    onHistoryResetNonceChanged: root.refreshHistory()
+
     function checkIdle() {
         if (idleRevertMinutes <= 0) {
             idleSeconds = 0;
