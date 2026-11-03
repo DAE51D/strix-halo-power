@@ -29,7 +29,8 @@ the `.plasmoid` leaves the widget showing a disconnected/no-op state.
       approach as the `knvtop` sibling project
 - [x] GitHub Actions release workflow (`.github/workflows/package.yml`) —
       pushing a `v*` tag builds the `.plasmoid` and attaches it to a GitHub
-      Release automatically, so the repo's own GitHub becomes a real
+      Release automatically, using the matching `releases/<tag>.md` as its
+      release notes, so the repo's own GitHub becomes a real
       distribution point without a manual build step each time
 - [x] Draft store listing copy (title, tagline, longer description, tags/
       category) — see `STORE_LISTING.md`
@@ -39,11 +40,14 @@ the `.plasmoid` leaves the widget showing a disconnected/no-op state.
       do this before ever pushing a tag or submitting to the store
 - [x] Push a `v<version>` tag to trigger the release workflow and confirm the
       GitHub Release + attached `.plasmoid` come out right — **this is a
-      real, publicly visible action (creates a tag + a GitHub Release), so
-      it's left for you to trigger deliberately** rather than done
-      automatically: `git tag v<version> && git push origin v<version>`
+      real, publicly visible action (creates a tag + a GitHub Release), so it
+      should only be triggered with explicit authorization**:
+      `git tag v<version> && git push origin v<version>`
       (confirmed working for v1.0.0 and v1.2.0 — see
       [Releases](https://github.com/DAE51D/strix-halo-power/releases))
+- [x] Keep a paste-ready Markdown release note at
+       `releases/<version>.md`; the release workflow uses it as the GitHub
+       Release body for the matching tag.
 
 ## Needs your KDE Identity login (can't be done from here)
 

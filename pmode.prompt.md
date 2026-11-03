@@ -116,6 +116,19 @@ modes.
   hand-rolled Canvas line chart (`HistoryChart.qml`, same approach as
   `Ring.qml`) with a hover crosshair + time/power/cost readout.
 
+**2026-11-02 release (v1.3.0):**
+
+- Add `ResetHistory()` through the backend D-Bus API and the C++ bridge.
+  The General config now has a distinct **Reset history graph** action; it
+  clears rolling chart buckets without changing lifetime energy/cost data.
+- After a successful reset, the config page increments the shared
+  `historyResetNonce` KConfig value. The already-open popup watches that
+  value and refreshes the chart immediately rather than waiting for its
+  periodic refresh timer (the settings page and popup are separate QML
+  contexts).
+- The release workflow reads the paste-ready release body from
+  `releases/<tag>.md`; create the matching file before pushing a version tag.
+
 **Development workflow (verified 2026-10-01, applet step updated 2026-10-16):**
 After making changes to the service, bridge, or applet:
 

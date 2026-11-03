@@ -34,22 +34,6 @@ jobs:
           name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
-          body: |
-            Automated release for version ${{ steps.metadata.outputs.VERSION }}.
-
-            This is the Plasma panel widget only (`com.daevid.pmode`). It talks to
-            the `com.evox2.powermode` D-Bus service, which is **not** part of
-            this package — install the full stack first (kernel driver,
-            privilege helper, D-Bus backend + bridge) via
-            `sudo ./install.sh` from the repo, then use this `.plasmoid` if
-            you only need to reinstall/update the widget itself.
-
-            ### Widget-only installation
-            1. Download the `.plasmoid` file below.
-            2. Install using:
-               ```bash
-               kpackagetool6 -t Plasma/Applet -u ${{ steps.metadata.outputs.FILENAME }}
-               ```
-               (use `-i` instead of `-u` for a first-time install)
+          body_path: releases/${{ github.ref_name }}.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

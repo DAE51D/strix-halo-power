@@ -9,9 +9,9 @@ Tested on a [GMKtec NucBox EVO-X2](https://www.gmktec.com/products/amd-ryzen%E2%
 
 The Plasma widget is also on the [KDE Store](https://store.kde.org/p/2370068/) — but it's a thin D-Bus client with no function on its own, so install the full stack below first either way.
 
-Right-click the panel widget to pick a mode directly:
+Hover over the widget for quick readings; click to open the expanded gauges and history chart:
 
-![Strix Halo Power Mode widget menu](docs/widget-menu.png)
+![Strix Halo Power hover tooltip](docs/widget-menu.png)
 
 Press the `P-MODE` button to cycle:
 
@@ -118,12 +118,18 @@ gauges (power draw, APU temp, fan RPM, 1-minute load), running energy
 stats (total kWh and cost since tracking started, at a configurable
 `$/kWh` rate — right-click → **Configure** → **General**, default `0.13`;
 *Reset* clears the accumulator), and a rolling 7-day hourly power line
-chart below that. The chart is independent of the cumulative total/cost —
-it's not affected by *Reset* and ages out on its own (hours older than
-30 days are dropped; the UI shows the most recent 7 of those). A pin
-button (top-right, 📌) keeps the popup open instead of closing on focus
-loss. Toggle the gauges off entirely with *Show telemetry* in the same
-config page if you just want the plain mode switcher.
+chart below that. The chart is independent of the cumulative total/cost and
+ages out on its own (hours older than 30 days are dropped; the UI shows the
+most recent 7 of those). A pin button (top-right, 📌) keeps the popup open
+instead of closing on focus loss. In **Configure → General**, *Reset cost
+counter* clears cumulative energy/cost, while *Reset history graph*
+independently clears the chart without affecting that lifetime total. Toggle
+the gauges off entirely with *Show telemetry* in the same config page if you
+just want the plain mode switcher.
+
+![Expanded telemetry gauges and 7-day power history](docs/cost-graph.png)
+
+![General configuration, energy-cost tracking, and independent reset controls](docs/configuration.png)
 
 **CLI (D-Bus):**
 
@@ -178,7 +184,7 @@ Bus `com.evox2.powermode`, object `/com/evox2/powermode`, interface
 | --------------------------------------------------------- | ------------- | ------------------------------------------------------ |
 | `Mode`                                                  | property (s)  | Current mode                                           |
 | `Modes`                                                 | property (as) | `["quiet", "balanced", "performance"]`               |
-| `Version`                                               | property (s)  | Service version (currently 1.2.1)                    |
+| `Version`                                               | property (s)  | Service version (currently 1.3.0)                    |
 | `GetMode()`                                             | method → s   | Current mode                                           |
 | `SetMode(mode)`                                         | method (s)    | Validate + write sysfs + read back                     |
 | `SetQuiet()` / `SetBalanced()` / `SetPerformance()` | method        | No-arg setters (Plasma drops args — see TECHNICAL.md) |
@@ -188,6 +194,7 @@ Bus `com.evox2.powermode`, object `/com/evox2/powermode`, interface
 | `GetEnergy()`                                           | method → s   | JSON: `total_wh`, `total_cost`, `started` (epoch)       |
 | `ResetEnergy()`                                         | method        | Zero the energy/cost accumulator, reset `started`       |
 | `GetEnergyHistory()`                                    | method → s   | JSON array of hourly buckets `{hour, wh}`, last 30 days, independent of `ResetEnergy` |
+| `ResetHistory()`                                        | method        | Clear hourly chart history only; cumulative energy and cost are preserved |
 | `GetRate()` / `SetRate(rate)`                           | method → d / (s) | Read/set the `$/kWh` cost rate                      |
 | `Log(message)`                                          | method (s)    | Applet → service log passthrough (for `journalctl` debugging) |
 | `ModeChanged(newMode, source)`                          | signal (s, s) | Any change (applet / button / CLI)                     |

@@ -3,10 +3,10 @@
 # with a build timestamp, so the widget's About page (Settings -> About)
 # shows exactly which build is running:
 #
-#     Strix Halo Power Mode 1.2.1+20261016.2130.a8414a5-dirty
+#     Strix Halo Power Mode 1.3.0+<timestamp>.<git-sha>[-dirty]
 #
 # Only the *installed copy's* metadata.json is stamped. The source tree's
-# Version stays a clean "1.2.1" (what build-plasmoid.sh packages and what
+# Version stays a clean "1.3.0" (what build-plasmoid.sh packages and what
 # pmode.prompt.md says to bump), so release builds never carry a timestamp.
 #
 # Stamp format: <Version>+<YYYYMMDD>.<HHMM>.<git short sha>[-dirty]
@@ -26,7 +26,7 @@ dest="${PMODE_DEST:-$HOME/.local/share/plasma/plasmoids/com.daevid.pmode}"
 
 sha="$(git -C "$repo_root" rev-parse --short HEAD 2>/dev/null || echo nogit)"
 if [[ -n "$(git -C "$repo_root" status --porcelain -- applet/com.daevid.pmode 2>/dev/null)" ]]; then
-    sha="${sha}-dirty"
+	sha="${sha}-dirty"
 fi
 stamp="$(date +%Y%m%d.%H%M).${sha}"
 
@@ -48,8 +48,8 @@ print("Deployed to", path, "->", meta["KPlugin"]["Version"])
 PY
 
 if [[ "${1:-}" == "--restart" ]]; then
-    systemctl --user restart plasma-plasmashell.service
-    echo "plasmashell restarted"
+	systemctl --user restart plasma-plasmashell.service
+	echo "plasmashell restarted"
 else
-    echo "Not restarting plasmashell; run with --restart (or restart it yourself) to load this build."
+	echo "Not restarting plasmashell; run with --restart (or restart it yourself) to load this build."
 fi
