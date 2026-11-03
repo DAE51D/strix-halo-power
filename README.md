@@ -11,6 +11,10 @@ The Plasma widget is also on the [KDE Store](https://store.kde.org/p/2370068/) â
 
 Hover over the widget for quick readings; click to open the expanded gauges and history chart:
 
+![Strix Halo Power Cost Graph](docs/cost-graph.png)
+
+![Strix Halo Power Configuration](docs/configuration.png)
+
 ![Strix Halo Power hover tooltip](docs/widget-menu.png)
 
 Press the `P-MODE` button to cycle:

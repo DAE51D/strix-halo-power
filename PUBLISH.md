@@ -43,7 +43,8 @@ the `.plasmoid` leaves the widget showing a disconnected/no-op state.
       real, publicly visible action (creates a tag + a GitHub Release), so it
       should only be triggered with explicit authorization**:
       `git tag v<version> && git push origin v<version>`
-      (confirmed working for v1.0.0 and v1.2.0 — see
+      (confirmed working for v1.0.0, v1.2.0, v1.2.1, and v1.3.0; the
+      v1.3.0 Actions run and uploaded asset were verified on 2026-11-03 — see
       [Releases](https://github.com/DAE51D/strix-halo-power/releases))
 - [x] Keep a paste-ready Markdown release note at
        `releases/<version>.md`; the release workflow uses it as the GitHub
