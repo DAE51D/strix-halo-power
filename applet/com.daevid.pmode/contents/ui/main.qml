@@ -31,6 +31,7 @@ PlasmoidItem {
 
     // Energy cost (populated by GetEnergy call)
     property real totalCost: 0
+    property real totalWh: 0
     property real trackingStarted: 0
 
     // Rolling power history (populated by GetEnergyHistory call) — fixed-
@@ -126,6 +127,7 @@ PlasmoidItem {
                 try {
                     const e = JSON.parse(reply.values[0]);
                     totalCost = e.total_cost ?? 0;
+                    totalWh = e.total_wh ?? 0;
                     trackingStarted = e.started ?? 0;
                 } catch (err) {}
             }
@@ -428,7 +430,8 @@ PlasmoidItem {
 
             Text {
                 textFormat: Text.StyledText
-                text: i18n("cost <b>$%1</b>", root.totalCost.toFixed(4))
+                text: i18n("total <b>%1 kWh</b> · cost <b>$%2</b>",
+                    (root.totalWh / 1000.0).toFixed(2), root.totalCost.toFixed(4))
                 color: Kirigami.Theme.textColor; font.pointSize: 7
             }
         }
